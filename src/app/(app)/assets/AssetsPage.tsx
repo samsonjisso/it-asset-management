@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { supabase, Asset, Department } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { DataTable, Column } from '../components/DataTable';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, SelectInput, TextArea, Button } from '../components/FormControls';
+import { supabase, Asset, Department } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { DataTable, Column } from '../../../components/DataTable';
+import { Modal } from '../../../components/Modal';
+import { Field, TextInput, SelectInput, TextArea, Button } from '../../../components/FormControls';
 import { Plus, Pencil, Trash2, Boxes, Download, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const assetTypeOptions = [
