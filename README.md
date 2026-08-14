@@ -1,97 +1,132 @@
-# GBB IT Asset Inventory (Next.js)
+# GBB IT Asset Inventory Management System
 
-Migrated from a Vite + React SPA to Next.js (App Router). The Express +
-better-sqlite3 backend is unchanged and still runs as a separate process;
-Next.js proxies `/api/*` to it, the same role Vite's `server.proxy` used
-to play.
+A full-stack web application built with **Next.js (App Router)** and **Express.js** for managing IT assets, devices, users, licenses, and infrastructure for Gohbeto Bank.
 
-## What changed
+## Overview
 
-- **Routing**: the old single-page app switched "pages" with React state
-  (`activePage` / `onNavigate`). Each page is now a real Next.js route:
-  `/dashboard`, `/pc`, `/assets`, `/ip`, `/licenses`, `/devices`,
-  `/servers`, `/reminders`, `/reports`, `/users`, `/departments`,
-  `/backup`, `/about`, `/profile`, plus `/login`. `/` redirects to
-  `/dashboard`.
-- **Layout structure**:
-  - `src/app/layout.tsx` — root HTML shell, wraps everything in
-    `Providers` (Auth + Toast contexts).
-  - `src/app/login/page.tsx` — public login route; redirects to
-    `/dashboard` once signed in.
-  - `src/app/(app)/layout.tsx` — auth guard for every protected route:
-    shows the loading spinner, redirects to `/login` if unauthenticated,
-    shows the "account disabled" screen if applicable, otherwise renders
-    the sidebar (`components/Layout.tsx`) around the page.
-  - `src/app/(app)/<route>/page.tsx` — one thin file per route that just
-    renders the matching component from `src/views/`.
-- **Old `src/pages/*` → `src/views/*`**: renamed because Next.js
-  auto-routes anything under a top-level `pages/` (or `src/pages/`)
-  directory as the legacy Pages Router. Contents are otherwise
-  unchanged, aside from adding `"use client"` (they all use hooks,
-  `localStorage`, or browser APIs).
-- **`src/components/Layout.tsx`**: the sidebar/topbar now uses
-  `next/link` and `usePathname()` for active-route highlighting and
-  navigation instead of the old `activePage`/`onNavigate` props.
-- **`src/lib/api.ts`**: `import.meta.env.VITE_API_URL` →
-  `process.env.NEXT_PUBLIC_API_URL` (still defaults to same-origin
-  `/api`).
-- **`server/*` is now TypeScript** (`.js` → `.ts` throughout, including
-  `routes/`). Run with [`tsx`](https://github.com/privatenumber/tsx) —
-  no separate compile step, same as the old `node --watch`/`node`
-  scripts just swapped for `tsx watch`/`tsx`. Typecheck it on its own
-  with `npm run typecheck:server` (it has its own `server/tsconfig.json`,
-  kept separate from the Next.js one since the two use different
-  module resolution settings).
-- **New: IP availability check (ping)**. `GET /api/ip/check-availability?ip=...`
-  (in `server/routes/ip-check.ts`) pings the address server-side with a
-  single 1-second-timeout ICMP echo (`execFile('ping', [...])` — no
-  shell, so it's not injectable — plus a strict IPv4 regex check before
-  that). Returns `{ available: false, message: "The IP is already
-  assigned." }` if it responds, `{ available: true, message: "The IP
-  is available." }` if it times out. Wired into the "Register/Edit IP
-  Address" form on `/ip` as a **Check** button next to the IP field.
-  Requires the `ping` binary on the host running the Express server
-  (present on virtually all Linux/macOS/Windows systems; on a minimal
-  Docker base image you may need `apt-get install -y iputils-ping`).
-- **Not implemented (by request)**: automatic fetch of a PC's
-  hostname/MAC/logged-in user during registration — browsers can't read
-  that from the machine they're running on, so this was intentionally
-  left out; those fields stay manual entry. The Admin/Editor/Reader/Audit
-  role model from the requirements doc is also still pending — the app
-  currently keeps its original four roles
-  (`admin`/`manager`/`register_user`/`assessor`).
-- **`server/index.js` (pre-TS)**: dropped the block that served a built
-  `dist/` folder in production — the frontend is now its own Next.js
-  server. The Express app only ever needs to serve `/api/*`.
+This is a comprehensive IT asset management solution that provides:
+- **Dashboard**: Central monitoring of all IT assets
+- **Device Management**: PC and server registration and tracking
+- **IP Management**: IP address allocation and availability checking
+- **License Tracking**: Software license inventory and reminders
+- **User Management**: User accounts and departmental organization
+- **Backup Management**: Backup status and scheduling
+- **Reporting**: Asset reports and audit trails
+- **Role-Based Access Control**: Admin, Manager, Registered User, and Assessor roles
 
-Auth is still fully client-side (JWT in `localStorage`, checked in
-`AuthContext`), so the `(app)` layout guard runs in the browser after
-hydration, same as the old `App.tsx` gate — there's no server-side
-session check or middleware.
+The application uses a modern frontend built with Next.js and React, backed by an Express.js API with SQLite database.
 
-## Running locally
+## Prerequisites
+
+- **Node.js** 16+ and **npm** or **pnpm**
+- **ping** binary (for IP availability checks) — standard on Linux, macOS, Windows
+- Optional: **pnpm** for faster installs (configured in `pnpm-workspace.yaml`)
+
+## Setup
+
+### 1. Install Dependencies
 
 ```bash
 npm install
-cp .env.example .env.local        # optional, only if you need to override defaults
+# or with pnpm
+pnpm install
+```
+
+### 2. Configure Environment Variables
+
+Copy the example environment files and customize as needed:
+
+```bash
+# Frontend configuration
+cp .env.example .env.local
+
+# Backend configuration
 cp server/.env.example server/.env
+```
+
+By default, the API runs on `http://localhost:4000` and the frontend proxies requests to it.
+
+## Running the Project
+
+### Development Mode
+
+Start both the Next.js frontend (port 3000) and Express API (port 4000) concurrently:
+
+```bash
 npm run dev
 ```
 
-This starts the Express API on `:4000` (via `tsx`) and Next.js on `:3000`
-(`concurrently`, same as before). Visit `http://localhost:3000`.
+Then open your browser and navigate to:
 
-Default seeded login: `admin@gohbetochbank.com` / `Admin@123` (change
-after first login).
+```
+http://localhost:3000
+```
 
-## Production
+**Default Login Credentials:**
+- Email: `admin@gohbetochbank.com`
+- Password: `Admin@123`
+
+⚠️ **Important**: Change these credentials after your first login.
+
+### Production Build & Deployment
+
+Build the application for production:
 
 ```bash
 npm run build
+```
+
+Start the production server (runs Next.js and Express together):
+
+```bash
 npm start
 ```
 
-`npm start` runs `next start` and the Express API side by side. If you
-deploy the API on a different host, set `API_PROXY_TARGET` (build/runtime
-env var for `next.config.js`'s rewrite) and/or `NEXT_PUBLIC_API_URL` to
-point the frontend at it.
+#### Deploying the API to a Different Host
+
+If you want to run the Express API on a separate server, configure these environment variables:
+
+- **`API_PROXY_TARGET`**: URL of your API server (used at build time in `next.config.js`)
+- **`NEXT_PUBLIC_API_URL`**: URL accessible to the frontend (used at runtime)
+
+Example:
+```bash
+NEXT_PUBLIC_API_URL=https://api.example.com npm run build
+npm start
+```
+
+## Architecture
+
+### Frontend (Next.js)
+- **App Router** with protected routes under `src/app/(app)/`
+- **Authentication**: Client-side JWT stored in `localStorage`
+- **Components**: Reusable UI components in `src/components/`
+- **Views**: Page-specific logic in `src/views/`
+- **Styling**: Tailwind CSS with custom configuration
+
+### Backend (Express.js + SQLite)
+- **Routing**: API endpoints organized in `server/routes/`
+- **Database**: SQLite with schema in `server/schema.sql`
+- **Authentication**: JWT-based auth in `server/auth.ts`
+- **Scheduling**: Automated tasks in `server/scheduler.ts`
+- **Mailing**: Email notifications via `server/mailer.ts`
+
+## Key Features
+
+- **IP Availability Check**: Real-time ping verification for IP addresses before assignment
+- **Role-Based Access**: Admin, Manager, Registered User, and Assessor roles
+- **Responsive Design**: Works on desktop and mobile devices
+- **Data Export**: Reports and asset inventory exports
+- **Audit Logging**: Track changes and user activities
+- **Dark Mode Support**: User preference-aware styling
+
+## Migration Notes (from Vite to Next.js)
+
+This project was recently migrated from a Vite + React SPA to Next.js. Key changes:
+
+- **Routing**: Real file-based routing instead of client-side state management
+- **Backend**: TypeScript server (`server/` now uses `.ts` files, run with `tsx`)
+- **Directory Structure**: `src/pages/` → `src/views/` to avoid Next.js auto-routing conflicts
+- **Environment Variables**: Vite's `import.meta.env.VITE_API_URL` → Next.js's `process.env.NEXT_PUBLIC_API_URL`
+
+For detailed migration information, see [MARIADB_MIGRATION.md](MARIADB_MIGRATION.md).
