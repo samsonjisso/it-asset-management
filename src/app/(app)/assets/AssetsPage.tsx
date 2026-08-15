@@ -152,6 +152,10 @@ export function AssetsPage() {
       toast('Asset name and asset type are required', 'error');
       return;
     }
+    if (!form.department_id) {
+      toast('Department is required for all asset entries', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
       ...form,
@@ -410,7 +414,7 @@ export function AssetsPage() {
                 {assetTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectInput>
             </Field>
-            <Field label="Department">
+            <Field label="Department" required>
               <SelectInput value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}>
                 <option value="">Select department/branch</option>
                 {departments.map((d) => (

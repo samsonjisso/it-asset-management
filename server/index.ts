@@ -11,17 +11,30 @@ import ipCheckRoutes from './routes/ip-check.js';
 import { createCrudRouter } from './crud.js';
 import { WRITE_ROLES, MANAGE_ROLES } from './auth.js';
 import { startReminderScheduler } from './scheduler.js';
+import { sanitizeBody, sanitizeQuery, validateGenericRequest } from './middleware/common.js';
+import { validatePcRegistration } from './middleware/pcValidation.js';
+import { validateLicense } from './middleware/licenseValidation.js';
+import { validateDevice } from './middleware/deviceValidation.js';
+import { validateReminder } from './middleware/reminderValidation.js';
+import { validateAsset } from './middleware/assetValidation.js';
+import { validateIpAddress } from './middleware/ipAddressValidation.js';
+import { validateServer } from './middleware/serverValidation.js';
+import { validateDepartment } from './middleware/departmentValidation.js';
 
 const PORT = process.env.PORT || 4000;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(sanitizeBody);
+app.use(sanitizeQuery);
+app.use(validateGenericRequest);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/ip', ipCheckRoutes);
 
+app.use('/api/departments', validateDepartment);
 app.use(
   '/api/departments',
   createCrudRouter('departments', {
@@ -31,6 +44,7 @@ app.use(
   })
 );
 
+app.use('/api/pc_registrations', validatePcRegistration);
 app.use(
   '/api/pc_registrations',
   createCrudRouter('pc_registrations', {
@@ -41,6 +55,7 @@ app.use(
   })
 );
 
+app.use('/api/licenses', validateLicense);
 app.use(
   '/api/licenses',
   createCrudRouter('licenses', {
@@ -50,6 +65,7 @@ app.use(
   })
 );
 
+app.use('/api/devices', validateDevice);
 app.use(
   '/api/devices',
   createCrudRouter('devices', {
@@ -59,6 +75,7 @@ app.use(
   })
 );
 
+app.use('/api/servers', validateServer);
 app.use(
   '/api/servers',
   createCrudRouter('servers', {
@@ -68,6 +85,7 @@ app.use(
   })
 );
 
+app.use('/api/reminders', validateReminder);
 app.use(
   '/api/reminders',
   createCrudRouter('reminders', {
@@ -77,6 +95,7 @@ app.use(
   })
 );
 
+app.use('/api/assets', validateAsset);
 app.use(
   '/api/assets',
   createCrudRouter('assets', {
@@ -87,6 +106,7 @@ app.use(
   })
 );
 
+app.use('/api/ip_addresses', validateIpAddress);
 app.use(
   '/api/ip_addresses',
   createCrudRouter('ip_addresses', {

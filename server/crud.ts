@@ -121,7 +121,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
 
       const connection = await db.getConnection();
       try {
-        const [rows] = await connection.execute(sql, params);
+        const [rows] = await connection.execute(sql, params as any[]);
         let jsonRows = (rows as Row[]).map((r) => rowToJson(r, columns) as Row);
         if (withDepartment) {
           jsonRows = await Promise.all(jsonRows.map((r) => attachDepartment(r) as Promise<Row>));
@@ -163,7 +163,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       );
       const timestampCols = ['created_at', 'updated_at'].filter((c) => columns.includes(c));
       const allCols = ['id', ...insertCols, ...timestampCols];
-      const values = allCols.map((c) => {
+      const values: any[] = allCols.map((c) => {
         if (c === 'id') return id;
         if (c === 'created_at' || c === 'updated_at') return ts;
         let v = body[c];
@@ -175,7 +175,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       try {
         await connection.execute(
           `INSERT INTO ${table} (${allCols.join(', ')}) VALUES (${placeholders})`,
-          values
+          values as any[]
         );
         const [rows] = await connection.execute(`SELECT * FROM ${table} WHERE id = ?`, [id]);
         const row = (rows as Row[])[0];
@@ -200,7 +200,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
         return res.status(400).json({ error: 'No valid fields to update' });
       }
       const setCols = [...updateCols];
-      const values: unknown[] = updateCols.map((c) => {
+      const values: any[] = updateCols.map((c) => {
         let v = body[c];
         if (BOOLEAN_COLUMNS.has(c)) v = v ? 1 : 0;
         return v === undefined ? null : v;
@@ -215,7 +215,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       try {
         const result = await connection.execute(
           `UPDATE ${table} SET ${setSql} WHERE id = ?`,
-          values
+          values as any[]
         );
         if ((result[0] as any).affectedRows === 0) return res.status(404).json({ error: 'Not found' });
         const [rows] = await connection.execute(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);

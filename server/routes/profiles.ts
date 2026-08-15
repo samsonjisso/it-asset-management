@@ -85,7 +85,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     try {
       const result = await connection.execute(
         `UPDATE profiles SET ${setCols.join(', ')} WHERE id = ?`,
-        values
+        values as any[]
       );
       if ((result[0] as any).affectedRows === 0) return res.status(404).json({ error: 'Not found' });
 

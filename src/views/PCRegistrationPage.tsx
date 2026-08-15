@@ -26,6 +26,67 @@ const emptyForm = {
   notes: '',
 };
 
+function isValidIpv4(value: string) {
+  return /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(value.trim());
+}
+
+function isValidMacAddress(value: string) {
+  const trimmed = value.trim();
+  return (
+    /^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(trimmed) ||
+    /^(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}$/.test(trimmed) ||
+    /^[0-9A-Fa-f]{12}$/.test(trimmed)
+  );
+}
+
+function containsUnsafeScript(value: string) {
+  return /<\s*(script|iframe|object|embed|svg|img)|javascript\s*:|vbscript\s*:|on\w+\s*=|<\s*\/?\s*[a-z]+\s*>/i.test(value);
+}
+
+function validatePCForm(form: typeof emptyForm) {
+  const entries = Object.entries(form) as [string, string][];
+
+  for (const [key, value] of entries) {
+    const text = value.trim();
+    if (!text) continue;
+    if (containsUnsafeScript(text)) {
+      throw new Error(`${key.replace(/_/g, ' ')} contains invalid or unsafe script characters.`);
+    }
+  }
+
+  if (form.hostname.trim() && !/^GBBIT01[0-9A-Z-]*$/i.test(form.hostname.trim())) {
+    throw new Error('PC hostname must start with GBBIT01 and use letters, numbers, or hyphens only.');
+  }
+
+  if (form.mac_address.trim() && !isValidMacAddress(form.mac_address)) {
+    throw new Error('MAC address must be valid and use either colon-separated or 12-character hex format.');
+  }
+
+  if (form.ip_address.trim() && !isValidIpv4(form.ip_address)) {
+    throw new Error('IP address must be a valid IPv4 address like 10.6.1.12.');
+  }
+
+  if (form.floor_number.trim() && !/^\d+$/.test(form.floor_number.trim())) {
+    throw new Error('Floor number must contain only numbers.');
+  }
+
+  if (form.switch_port_number.trim() && !/^\d+$/.test(form.switch_port_number.trim())) {
+    throw new Error('Switch port number must contain only numbers.');
+  }
+
+  if (form.access_switch_name.trim() && !/^[A-Za-z0-9][A-Za-z0-9 _.-]*$/.test(form.access_switch_name.trim())) {
+    throw new Error('Access switch name must be a valid text value without script content.');
+  }
+
+  if (form.patch_level_number.trim() && !/^\d+$/.test(form.patch_level_number.trim())) {
+    throw new Error('Patch number must contain only numbers.');
+  }
+
+  if (form.access_switch_ip.trim() && !isValidIpv4(form.access_switch_ip)) {
+    throw new Error('Access switch IP address must be a valid IPv4 address.');
+  }
+}
+
 export function PCRegistrationPage() {
   const { canWrite, hasRole, profile } = useAuth();
   const { toast } = useToast();
@@ -87,8 +148,20 @@ export function PCRegistrationPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    try {
+      validatePCForm(form);
+    } catch (error) {
+      toast((error as Error).message, 'error');
+      return;
+    }
+
     if (!form.hostname) {
       toast('Hostname is required', 'error');
+      return;
+    }
+    if (!form.department_id) {
+      toast('Department is required for all PC registration entries', 'error');
       return;
     }
     setSaving(true);
@@ -245,7 +318,7 @@ export function PCRegistrationPage() {
             <Field label="IP Address">
               <TextInput value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="10.6.x.x" />
             </Field>
-            <Field label="Department / Branch">
+            <Field label="Department / Branch" required>
               <SelectInput value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}>
                 <option value="">Select department/branch</option>
                 {departments.map((d) => (

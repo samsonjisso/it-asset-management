@@ -111,7 +111,7 @@ export function Layout({ children }: LayoutProps) {
           <GBBLogo size={44} className="rounded-lg bg-white p-1" />
           <div>
             <h1 className="text-sm font-bold leading-tight">Goh Betoch Bank</h1>
-            <p className="text-[10px] text-[#ffc800] uppercase tracking-wider">IT Asset Inventory</p>
+            <p className="text-[10px] text-[#ffc800] uppercase tracking-wider">IT Asset Management</p>
           </div>
         </div>
 

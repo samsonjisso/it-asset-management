@@ -30,6 +30,30 @@ CREATE TABLE IF NOT EXISTS departments (
   KEY idx_departments_created (created_at)
 );
 
+CREATE TABLE IF NOT EXISTS ip_addresses (
+  id VARCHAR(36) PRIMARY KEY,
+  ip_address VARCHAR(15) NOT NULL UNIQUE,
+  hostname VARCHAR(255),
+  department_id VARCHAR(36),
+  ip_owner VARCHAR(255),
+  mac_address VARCHAR(17),
+  port INT,
+  switch_port VARCHAR(50),
+  switch_ip VARCHAR(15),
+  patch_panel_port VARCHAR(50),
+  vlan VARCHAR(50),
+  status VARCHAR(50) NOT NULL DEFAULT 'assigned'
+    CHECK (status IN ('assigned', 'reserved', 'available', 'decommissioned')),
+  notes TEXT,
+  registered_by VARCHAR(36),
+  created_at VARCHAR(30) NOT NULL,
+  updated_at VARCHAR(30) NOT NULL,
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
+  FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
+  KEY idx_ip_department (department_id),
+  KEY idx_ip_address (ip_address)
+);
+
 CREATE TABLE IF NOT EXISTS pc_registrations (
   id VARCHAR(36) PRIMARY KEY,
   hostname VARCHAR(255) NOT NULL,
@@ -39,6 +63,7 @@ CREATE TABLE IF NOT EXISTS pc_registrations (
   mac_address VARCHAR(17),
   product_key VARCHAR(255),
   ip_address VARCHAR(15),
+  ip_address_id VARCHAR(36),
   department_id VARCHAR(36),
   floor_number VARCHAR(50),
   switch_port_number VARCHAR(50),
@@ -49,9 +74,11 @@ CREATE TABLE IF NOT EXISTS pc_registrations (
   registered_by VARCHAR(36),
   created_at VARCHAR(30) NOT NULL,
   updated_at VARCHAR(30) NOT NULL,
-  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
+  FOREIGN KEY (ip_address_id) REFERENCES ip_addresses(id) ON DELETE CASCADE,
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   KEY idx_pc_department (department_id),
+  KEY idx_pc_ip_address (ip_address_id),
   KEY idx_pc_created (created_at)
 );
 
@@ -155,28 +182,8 @@ CREATE TABLE IF NOT EXISTS assets (
   registered_by VARCHAR(36),
   created_at VARCHAR(30) NOT NULL,
   updated_at VARCHAR(30) NOT NULL,
-  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
+  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   KEY idx_assets_department (department_id),
   KEY idx_assets_created (created_at)
-);
-
--- IP Address Management (IPAM): the bank's registered IP addresses
-CREATE TABLE IF NOT EXISTS ip_addresses (
-  id VARCHAR(36) PRIMARY KEY,
-  ip_address VARCHAR(15) NOT NULL UNIQUE,
-  hostname VARCHAR(255),
-  department_id VARCHAR(36),
-  ip_owner VARCHAR(255),
-  mac_address VARCHAR(17),
-  status VARCHAR(50) NOT NULL DEFAULT 'assigned'
-    CHECK (status IN ('assigned', 'reserved', 'available', 'decommissioned')),
-  notes TEXT,
-  registered_by VARCHAR(36),
-  created_at VARCHAR(30) NOT NULL,
-  updated_at VARCHAR(30) NOT NULL,
-  FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
-  FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
-  KEY idx_ip_department (department_id),
-  KEY idx_ip_address (ip_address)
 );
