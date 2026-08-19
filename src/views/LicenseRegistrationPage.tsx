@@ -1,24 +1,16 @@
 "use client";
-
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, License } from '../lib/supabase';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { supabase, License, LicenseType, LicenseSubtype } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { DataTable, Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
-import { Field, TextInput, SelectInput, TextArea, Button } from '../components/FormControls';
-import { Plus, Pencil, Trash2, KeyRound, Download, AlertTriangle, CheckCircle } from 'lucide-react';
-
-const licenseTypes = [
-  { value: 'operating_system', label: 'Operating System License', subtypes: ['Windows', 'Redhat', 'Ubuntu', 'Other'] },
-  { value: 'email_365', label: 'Email / 365 License', subtypes: ['MS Business Standard', 'Exchange Online', 'MS Defender', 'Other'] },
-  { value: 'veam_backup', label: 'VEAM Backup License', subtypes: ['VEAM Backup & Replication', 'VEAM One', 'Other'] },
-  { value: 'vmware', label: 'VMware / vCenter License', subtypes: ['vSphere', 'vCenter Server', 'ESXi', 'Other'] },
-  { value: 'other', label: 'Other License', subtypes: ['Other'] },
-];
+import { DetailsModal, DetailSection } from '../components/DetailsModal';
+import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '../components/FormControls';
+import { Plus, Pencil, Trash2, Eye, KeyRound, Download, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const emptyForm = {
-  license_type: 'operating_system' as License['license_type'],
+  license_type: '',
   license_subtype: '',
   vendor: '',
   license_key: '',
@@ -28,21 +20,30 @@ const emptyForm = {
   notes: '',
 };
 
-export function LicenseRegistrationPage() {
+export function LicenseRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number } = {}) {
   const { canWrite, hasRole, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<License[]>([]);
+  const [licenseTypeOptions, setLicenseTypeOptions] = useState<LicenseType[]>([]);
+  const [licenseSubtypes, setLicenseSubtypes] = useState<LicenseSubtype[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<License | null>(null);
+  const [viewing, setViewing] = useState<License | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [skipKey, setSkipKey] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('licenses').select('*').order('created_at', { ascending: false });
-    if (data) setRecords(data as License[]);
+    const [licRes, typesRes, subtypesRes] = await Promise.all([
+      supabase.from('licenses').select('*').order('created_at', { ascending: false }),
+      supabase.from('license_types').select('*').order('label'),
+      supabase.from('license_subtypes').select('*').order('label'),
+    ]);
+    if (licRes.data) setRecords(licRes.data as License[]);
+    if (typesRes.data) setLicenseTypeOptions(typesRes.data as LicenseType[]);
+    if (subtypesRes.data) setLicenseSubtypes(subtypesRes.data as LicenseSubtype[]);
     setLoading(false);
   }, []);
 
@@ -52,10 +53,20 @@ export function LicenseRegistrationPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, license_type: licenseTypeOptions[0]?.code ?? '' });
     setSkipKey(false);
     setModalOpen(true);
   };
+
+  const lastAutoOpen = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (autoOpenCreate !== undefined && autoOpenCreate !== lastAutoOpen.current) {
+      lastAutoOpen.current = autoOpenCreate;
+      openAdd();
+    }
+  }, [autoOpenCreate]);
+
+  const openView = (rec: License) => setViewing(rec);
 
   const openEdit = (rec: License) => {
     setEditing(rec);
@@ -75,6 +86,18 @@ export function LicenseRegistrationPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.license_type) {
+      toast('License Type is required. Ask an admin to add one under License Type Management.', 'error');
+      return;
+    }
+    if (form.number_of_licenses.trim() && !/^\d+$/.test(form.number_of_licenses.trim())) {
+      toast('Number of Licenses must be a whole number', 'error');
+      return;
+    }
+    if (form.effective_date && form.expiry_date && form.expiry_date < form.effective_date) {
+      toast('Expiry Date cannot be before the Effective Date', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
       license_type: form.license_type,
@@ -120,11 +143,11 @@ export function LicenseRegistrationPage() {
   };
 
   const exportCSV = () => {
-    const headers = ['License Type', 'Subtype', 'Vendor', 'License Key', 'Number of Licenses', 'Effective Date', 'Expiry Date', 'Status', 'Created At'];
+    const headers = ['Asset ID', 'License Type', 'Subtype', 'Vendor', 'License Key', 'Number of Licenses', 'Effective Date', 'Expiry Date', 'Status', 'Created At'];
     const rows = records.map((r) => {
       const status = getExpiryStatus(r);
       return [
-        r.license_type, r.license_subtype ?? '', r.vendor ?? '', r.license_key ?? 'N/A',
+        r.asset_id ?? '', r.license_type, r.license_subtype ?? '', r.vendor ?? '', r.license_key ?? 'N/A',
         r.number_of_licenses ?? '', r.effective_date ?? '', r.expiry_date ?? '',
         status?.label ?? 'No expiry', new Date(r.created_at).toLocaleDateString(),
       ];
@@ -139,15 +162,18 @@ export function LicenseRegistrationPage() {
     URL.revokeObjectURL(url);
   };
 
-  const currentType = licenseTypes.find((t) => t.value === form.license_type);
+  const currentType = licenseTypeOptions.find((t) => t.code === form.license_type);
+  const currentSubtypes = useMemo(
+    () => licenseSubtypes.filter((s) => s.license_type_id === currentType?.id),
+    [licenseSubtypes, currentType]
+  );
 
   const columns: Column<License>[] = [
-    { key: 'license_type', label: 'License Type', sortable: true, sortValue: (r) => r.license_type, render: (r) => licenseTypes.find((t) => t.value === r.license_type)?.label ?? r.license_type },
-    { key: 'license_subtype', label: 'Subtype', render: (r) => r.license_subtype ?? '-' },
+    { key: 'asset_id', label: 'Key', sortable: true, sortValue: (r) => r.asset_id ?? '', render: (r) => r.asset_id ? <span className="font-mono text-xs font-semibold text-brand-700">{r.asset_id}</span> : <span className="text-gray-400 italic">-</span> },
+    { key: 'license_type', label: 'Name', sortable: true, sortValue: (r) => r.license_type, render: (r) => (
+      <span className="font-medium text-gray-900">{licenseTypeOptions.find((t) => t.code === r.license_type)?.label ?? r.license_type}{r.license_subtype ? ` — ${r.license_subtype}` : ''}</span>
+    )},
     { key: 'vendor', label: 'Vendor', render: (r) => r.vendor ?? '-' },
-    { key: 'license_key', label: 'License Key', render: (r) => r.license_key ? <span className="font-mono text-xs">{r.license_key.slice(0, 12)}...</span> : <span className="text-gray-400 italic">No key</span> },
-    { key: 'number_of_licenses', label: 'Quantity', render: (r) => r.number_of_licenses ?? '-' },
-    { key: 'effective_date', label: 'Effective', render: (r) => r.effective_date ? new Date(r.effective_date).toLocaleDateString() : '-' },
     {
       key: 'expiry_date',
       label: 'Expiry',
@@ -172,27 +198,58 @@ export function LicenseRegistrationPage() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (r) =>
-        canWrite() ? (
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => openEdit(r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={16} /></button>
-            {hasRole('admin', 'manager') && (
-              <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
-            )}
-          </div>
-        ) : <span className="text-gray-400 text-xs">Read only</span>,
+      render: (r) => (
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => openView(r)} className="p-1.5 text-brand-600 hover:bg-brand-50 rounded-lg" title="View Details"><Eye size={16} /></button>
+          {canWrite() && <button onClick={() => openEdit(r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit"><Pencil size={16} /></button>}
+          {canWrite() && hasRole('admin') && (
+            <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete"><Trash2 size={16} /></button>
+          )}
+        </div>
+      ),
     },
   ];
+
+  const viewingStatus = viewing ? getExpiryStatus(viewing) : null;
+  const viewSections: DetailSection[] = viewing ? [
+    {
+      title: 'License Information',
+      fields: [
+        { label: 'Asset ID', value: viewing.asset_id, mono: true },
+        { label: 'License Type', value: licenseTypeOptions.find((t) => t.code === viewing.license_type)?.label ?? viewing.license_type },
+        { label: 'Subtype', value: viewing.license_subtype },
+        { label: 'Vendor', value: viewing.vendor },
+        { label: 'License Key', value: viewing.license_key, mono: true, full: true },
+        { label: 'Number of Licenses', value: viewing.number_of_licenses },
+      ],
+    },
+    {
+      title: 'Validity',
+      fields: [
+        { label: 'Effective Date', value: viewing.effective_date ? new Date(viewing.effective_date).toLocaleDateString() : null },
+        { label: 'Expiry Date', value: viewing.expiry_date ? new Date(viewing.expiry_date).toLocaleDateString() : 'No expiry' },
+        { label: 'Status', value: viewingStatus?.label ?? 'No expiry' },
+      ],
+    },
+    {
+      title: 'Other',
+      fields: [
+        { label: 'Notes', value: viewing.notes, full: true },
+        { label: 'Registered', value: new Date(viewing.created_at).toLocaleString() },
+        { label: 'Last Updated', value: new Date(viewing.updated_at).toLocaleString() },
+      ],
+    },
+  ] : [];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#343494] text-white flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 text-white flex items-center justify-center shadow-soft">
             <KeyRound size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#343494]">License Registration</h1>
+            <h1 className="text-xl font-bold text-brand-600">License Registration</h1>
             <p className="text-sm text-gray-500">{records.length} registered licenses</p>
           </div>
         </div>
@@ -203,7 +260,7 @@ export function LicenseRegistrationPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-[#343494]/30 border-t-[#343494] rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-brand-600/30 border-t-brand-600 rounded-full animate-spin" /></div>
       ) : (
         <DataTable
           columns={columns}
@@ -212,28 +269,47 @@ export function LicenseRegistrationPage() {
           searchPlaceholder="Search by subtype, vendor, key..."
           dateFilterKey="created_at"
           emptyMessage="No licenses registered yet"
+          onRowClick={openView}
         />
       )}
 
+      <DetailsModal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={viewing ? (licenseTypeOptions.find((t) => t.code === viewing.license_type)?.label ?? viewing.license_type) : ''}
+        subtitle={viewing?.license_subtype ?? viewing?.vendor ?? undefined}
+        icon={<KeyRound size={22} />}
+        sections={viewSections}
+        onEdit={viewing && canWrite() ? () => { const rec = viewing; setViewing(null); openEdit(rec); } : undefined}
+        editLabel="Edit License"
+      />
+
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit License' : 'Register New License'} size="lg">
         <form onSubmit={handleSave} className="space-y-4">
+          {editing?.asset_id && (
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+              <span className="text-xs font-medium text-gray-500">Asset ID</span>
+              <span className="font-mono text-sm font-semibold text-brand-700">{editing.asset_id}</span>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="License Type" required>
-              <SelectInput value={form.license_type} onChange={(e) => setForm({ ...form, license_type: e.target.value as License['license_type'], license_subtype: '' })}>
-                {licenseTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <SelectInput value={form.license_type} onChange={(e) => setForm({ ...form, license_type: e.target.value, license_subtype: '' })} required>
+                {licenseTypeOptions.length === 0 && <option value="">No license types configured</option>}
+                {licenseTypeOptions.map((t) => <option key={t.id} value={t.code}>{t.label}</option>)}
               </SelectInput>
             </Field>
             <Field label="License Subtype">
               <SelectInput value={form.license_subtype} onChange={(e) => setForm({ ...form, license_subtype: e.target.value })}>
                 <option value="">Select subtype</option>
-                {currentType?.subtypes.map((s) => <option key={s} value={s}>{s}</option>)}
+                {currentSubtypes.map((s) => <option key={s.id} value={s.label}>{s.label}</option>)}
               </SelectInput>
             </Field>
             <Field label="Vendor (Company)">
               <TextInput value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} placeholder="e.g., Microsoft, Redhat, VMware" />
             </Field>
             <Field label="Number of Licenses">
-              <TextInput type="number" min="0" value={form.number_of_licenses} onChange={(e) => setForm({ ...form, number_of_licenses: e.target.value })} placeholder="Total purchased licenses" />
+              <NumberInput min={0} value={form.number_of_licenses} onChange={(e) => setForm({ ...form, number_of_licenses: e.target.value })} placeholder="Total purchased licenses" />
             </Field>
             <Field label="Effective Date (optional)">
               <TextInput type="date" value={form.effective_date} onChange={(e) => setForm({ ...form, effective_date: e.target.value })} />

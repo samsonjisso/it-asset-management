@@ -1,7 +1,6 @@
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Reminder } from '../lib/supabase';
+import { supabase, Reminder, ReminderType } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { DataTable, Column } from '../components/DataTable';
@@ -9,21 +8,9 @@ import { Modal } from '../components/Modal';
 import { Field, TextInput, SelectInput, TextArea, Button } from '../components/FormControls';
 import { Plus, Pencil, Trash2, Bell, Calendar, Clock, AlertCircle, CheckCircle, Mail, MailCheck } from 'lucide-react';
 
-const reminderTypes = [
-  'Preventive Maintenance',
-  'License Renewal',
-  'Warranty Expiry',
-  'Contract Renewal',
-  'System Update',
-  'Security Audit',
-  'Backup Verification',
-  'Hardware Check',
-  'Other',
-];
-
 const emptyForm = {
   title: '',
-  reminder_type: 'Preventive Maintenance',
+  reminder_type: '',
   detail: '',
   remind_at: '',
   alert_email: '',
@@ -35,6 +22,7 @@ export function RemindersPage() {
   const { canWrite, hasRole, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<Reminder[]>([]);
+  const [reminderTypes, setReminderTypes] = useState<ReminderType[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
@@ -43,8 +31,12 @@ export function RemindersPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('reminders').select('*').order('remind_at', { ascending: true });
-    if (data) setRecords(data as Reminder[]);
+    const [remindersRes, typesRes] = await Promise.all([
+      supabase.from('reminders').select('*').order('remind_at', { ascending: true }),
+      supabase.from('reminder_types').select('*').order('label'),
+    ]);
+    if (remindersRes.data) setRecords(remindersRes.data as Reminder[]);
+    if (typesRes.data) setReminderTypes(typesRes.data as ReminderType[]);
     setLoading(false);
   }, []);
 
@@ -54,7 +46,7 @@ export function RemindersPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, reminder_type: reminderTypes[0]?.label ?? '' });
     setModalOpen(true);
   };
 
@@ -133,7 +125,7 @@ export function RemindersPage() {
 
   const columns: Column<Reminder>[] = [
     { key: 'title', label: 'Title', sortable: true, sortValue: (r) => r.title, render: (r) => <span className="font-medium">{r.title}</span> },
-    { key: 'reminder_type', label: 'Type', sortable: true, sortValue: (r) => r.reminder_type, render: (r) => <span className="text-xs px-2 py-1 rounded-full bg-[#343494]/10 text-[#343494] font-medium">{r.reminder_type}</span> },
+    { key: 'reminder_type', label: 'Type', sortable: true, sortValue: (r) => r.reminder_type, render: (r) => <span className="text-xs px-2 py-1 rounded-full bg-brand-600/10 text-brand-600 font-medium">{r.reminder_type}</span> },
     { key: 'detail', label: 'Detail', render: (r) => r.detail ? <span className="text-sm text-gray-600 line-clamp-2">{r.detail}</span> : '-' },
     { key: 'remind_at', label: 'Remind Date', sortable: true, sortValue: (r) => r.remind_at, render: (r) => (
       <div className="flex flex-col gap-1">
@@ -164,7 +156,7 @@ export function RemindersPage() {
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           {!r.is_dismissed && <button onClick={() => dismiss(r)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Dismiss"><CheckCircle size={16} /></button>}
           <button onClick={() => openEdit(r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={16} /></button>
-          {hasRole('admin', 'manager') && <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
+          {hasRole('admin') && <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
         </div>
       ) : <span className="text-gray-400 text-xs">Read only</span>,
     },
@@ -176,9 +168,9 @@ export function RemindersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#343494] text-white flex items-center justify-center"><Bell size={22} /></div>
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 text-white flex items-center justify-center shadow-soft"><Bell size={22} /></div>
           <div>
-            <h1 className="text-xl font-bold text-[#343494]">Reminders & Notifications</h1>
+            <h1 className="text-xl font-bold text-brand-600">Reminders & Notifications</h1>
             <p className="text-sm text-gray-500">{records.length} reminders, {upcoming.length} upcoming</p>
           </div>
         </div>
@@ -212,7 +204,7 @@ export function RemindersPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-[#343494]/30 border-t-[#343494] rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-brand-600/30 border-t-brand-600 rounded-full animate-spin" /></div>
       ) : (
         <DataTable
           columns={columns}
@@ -230,8 +222,8 @@ export function RemindersPage() {
             <TextInput value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Quarterly Server Maintenance" required />
           </Field>
           <Field label="Reminder Type" required>
-            <SelectInput value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value })}>
-              {reminderTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            <SelectInput value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value })} required>
+              {reminderTypes.map((t) => <option key={t.id} value={t.label}>{t.label}</option>)}
             </SelectInput>
           </Field>
           <Field label="Remind Date & Time" required>

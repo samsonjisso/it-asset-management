@@ -163,3 +163,20 @@ body {
   border-color: var(--gbb-primary);
   box-shadow: 0 0 0 3px rgba(102, 16, 242, 0.13);
 }
+
+html.dark body { background:#11111b; color:#e8e8f2; color-scheme:dark; }
+html.dark .bg-white { background-color:#1b1b29 !important; }
+html.dark .bg-gray-50 { background-color:#161621 !important; }
+html.dark .bg-gray-100 { background-color:#20202c !important; }
+html.dark .bg-gray-200 { background-color:#2a2a38 !important; }
+html.dark .text-gray-900 { color:#f4f4f8 !important; }
+html.dark .text-gray-800 { color:#ededf5 !important; }
+html.dark .text-gray-700 { color:#d7d7e2 !important; }
+html.dark .text-gray-600 { color:#bcbcca !important; }
+html.dark .text-gray-500 { color:#9999aa !important; }
+html.dark .text-gray-400 { color:#858596 !important; }
+html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color:#343443 !important; }
+html.dark input, html.dark textarea, html.dark select { background-color:#181824; color:#eeeeF5; border-color:#3a3a49; }
+html.dark table { color:#eeeeF5; }
+html.dark tr { border-color:#343443 !important; }
+html.dark .hover\:bg-gray-50:hover { background-color:#242431 !important; }

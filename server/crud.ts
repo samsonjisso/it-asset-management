@@ -37,6 +37,25 @@ function rowToJson(row: Row | undefined, columns: string[]): Row | undefined {
   return out;
 }
 
+
+async function attachIpRelations(row: Row | undefined): Promise<Row | undefined> {
+  if (!row || !row.id) return row;
+  const connection = await db.getConnection();
+  try {
+    const [pc] = await connection.execute('SELECT id, asset_id, hostname FROM pc_registrations WHERE ip_address_id = ?', [row.id]);
+    const [devices] = await connection.execute('SELECT id, asset_id, hostname, device_type FROM devices WHERE ip_address_id = ?', [row.id]);
+    const [servers] = await connection.execute('SELECT id, asset_id, hostname, server_type FROM servers WHERE ip_address_id = ?', [row.id]);
+    row.related_assets = {
+      pc: (pc as Row[])[0] ?? null,
+      device: (devices as Row[])[0] ?? null,
+      server: (servers as Row[])[0] ?? null,
+    };
+  } finally {
+    connection.release();
+  }
+  return row;
+}
+
 async function attachDepartment(row: Row | undefined): Promise<Row | undefined> {
   if (!row) return row;
   if (row.department_id) {
@@ -56,11 +75,46 @@ async function attachDepartment(row: Row | undefined): Promise<Row | undefined> 
   return row;
 }
 
+
+function assetTypeCode(table: string, body: Row): string | null {
+  if (table === 'pc_registrations') return 'COMP';
+  if (table === 'servers') return 'SRV';
+  if (table === 'licenses') return 'LIC';
+  if (table === 'devices') {
+    const text = String(body.device_type || 'DEV').toUpperCase().replace(/[^A-Z]/g, '');
+    return text ? text.slice(0, 4).padEnd(3, 'X') : 'DEV';
+  }
+  if (table === 'assets') {
+    const text = String(body.asset_type || 'AST').toUpperCase().replace(/[^A-Z]/g, '');
+    return text ? text.slice(0, 4).padEnd(3, 'X') : 'AST';
+  }
+  return null;
+}
+
+async function reserveAssetId(connection: any, table: string, body: Row): Promise<string | null> {
+  const code = assetTypeCode(table, body);
+  if (!code) return null;
+  const [rows] = await connection.execute('SELECT next_seq FROM asset_id_counters WHERE prefix = ? FOR UPDATE', [code]);
+  let seq: number;
+  if ((rows as any[]).length === 0) {
+    seq = 1;
+    await connection.execute('INSERT INTO asset_id_counters (prefix, next_seq) VALUES (?, ?)', [code, 2]);
+  } else {
+    seq = Number((rows as any[])[0].next_seq);
+    await connection.execute('UPDATE asset_id_counters SET next_seq = ? WHERE prefix = ?', [seq + 1, code]);
+  }
+  return `GBB-${code}-${String(seq).padStart(3, '0')}`;
+}
+
 export interface CrudRouterOptions {
   insertRoles?: UserRole[];
   updateRoles?: UserRole[];
   deleteRoles?: UserRole[];
   withDepartment?: boolean;
+  withIpRelations?: boolean;
+  autoAssetId?: boolean;
+  afterInsert?: (connection: any, id: string, body: Row) => Promise<void>;
+  afterUpdate?: (connection: any, id: string, body: Row) => Promise<void>;
 }
 
 /**
@@ -74,6 +128,10 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
     updateRoles = ['admin', 'manager', 'register_user'],
     deleteRoles = ['admin', 'manager'],
     withDepartment = false,
+    withIpRelations = false,
+    autoAssetId = false,
+    afterInsert,
+    afterUpdate,
   } = opts;
 
   const router = Router();
@@ -126,6 +184,9 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
         if (withDepartment) {
           jsonRows = await Promise.all(jsonRows.map((r) => attachDepartment(r) as Promise<Row>));
         }
+        if (withIpRelations) {
+          jsonRows = await Promise.all(jsonRows.map((r) => attachIpRelations(r) as Promise<Row>));
+        }
         res.json(jsonRows);
       } finally {
         connection.release();
@@ -144,6 +205,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
         if (!row) return res.status(404).json({ error: 'Not found' });
         let json: Row | undefined = rowToJson(row, columns);
         if (withDepartment) json = await attachDepartment(json);
+        if (withIpRelations) json = await attachIpRelations(json);
         res.json(json);
       } finally {
         connection.release();
@@ -162,6 +224,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
         (c) => c !== 'id' && c !== 'created_at' && c !== 'updated_at' && c in body
       );
       const timestampCols = ['created_at', 'updated_at'].filter((c) => columns.includes(c));
+      if (autoAssetId && columns.includes('asset_id') && !insertCols.includes('asset_id')) insertCols.push('asset_id');
       const allCols = ['id', ...insertCols, ...timestampCols];
       const values: any[] = allCols.map((c) => {
         if (c === 'id') return id;
@@ -173,14 +236,25 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       const placeholders = allCols.map(() => '?').join(', ');
       const connection = await db.getConnection();
       try {
+        await connection.beginTransaction();
+        if (autoAssetId && columns.includes('asset_id') && !body.asset_id) {
+          const generated = await reserveAssetId(connection, table, body);
+          if (generated) {
+            const idx = allCols.indexOf('asset_id');
+            if (idx >= 0) values[idx] = generated;
+          }
+        }
         await connection.execute(
           `INSERT INTO ${table} (${allCols.join(', ')}) VALUES (${placeholders})`,
           values as any[]
         );
+        if (afterInsert) await afterInsert(connection, id, body);
+        await connection.commit();
         const [rows] = await connection.execute(`SELECT * FROM ${table} WHERE id = ?`, [id]);
         const row = (rows as Row[])[0];
         let json: Row | undefined = rowToJson(row, columns);
         if (withDepartment) json = await attachDepartment(json);
+        if (withIpRelations) json = await attachIpRelations(json);
         res.status(201).json(json);
       } finally {
         connection.release();
@@ -213,15 +287,19 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       const setSql = setCols.map((c) => `${c} = ?`).join(', ');
       const connection = await db.getConnection();
       try {
+        await connection.beginTransaction();
         const result = await connection.execute(
           `UPDATE ${table} SET ${setSql} WHERE id = ?`,
           values as any[]
         );
-        if ((result[0] as any).affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+        if ((result[0] as any).affectedRows === 0) { await connection.rollback(); return res.status(404).json({ error: 'Not found' }); }
+        if (afterUpdate) await afterUpdate(connection, req.params.id, body);
+        await connection.commit();
         const [rows] = await connection.execute(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
         const row = (rows as Row[])[0];
         let json: Row | undefined = rowToJson(row, columns);
         if (withDepartment) json = await attachDepartment(json);
+        if (withIpRelations) json = await attachIpRelations(json);
         res.json(json);
       } finally {
         connection.release();

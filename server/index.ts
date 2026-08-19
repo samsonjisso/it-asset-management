@@ -20,12 +20,13 @@ import { validateAsset } from './middleware/assetValidation.js';
 import { validateIpAddress } from './middleware/ipAddressValidation.js';
 import { validateServer } from './middleware/serverValidation.js';
 import { validateDepartment } from './middleware/departmentValidation.js';
+import { syncIpForEntity, clearAndSyncIpForUpdate } from './ipSync.js';
 
 const PORT = process.env.PORT || 4000;
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(sanitizeBody);
 app.use(sanitizeQuery);
 app.use(validateGenericRequest);
@@ -52,6 +53,9 @@ app.use(
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
     withDepartment: true,
+    autoAssetId: true,
+    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'pc_registrations', id, body),
+    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'pc_registrations', id, body),
   })
 );
 
@@ -62,6 +66,7 @@ app.use(
     insertRoles: WRITE_ROLES,
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
+    autoAssetId: true,
   })
 );
 
@@ -72,6 +77,9 @@ app.use(
     insertRoles: WRITE_ROLES,
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
+    autoAssetId: true,
+    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'devices', id, body),
+    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'devices', id, body),
   })
 );
 
@@ -82,6 +90,9 @@ app.use(
     insertRoles: WRITE_ROLES,
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
+    autoAssetId: true,
+    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'servers', id, body),
+    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'servers', id, body),
   })
 );
 
@@ -103,6 +114,7 @@ app.use(
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
     withDepartment: true,
+    autoAssetId: true,
   })
 );
 
@@ -114,8 +126,26 @@ app.use(
     updateRoles: WRITE_ROLES,
     deleteRoles: MANAGE_ROLES,
     withDepartment: true,
+    withIpRelations: true,
   })
 );
+
+
+// Customization/configuration CRUD. These tables are intentionally kept generic
+// so administrators can manage the values used by registration forms without
+// requiring a schema change for every new option.
+const CONFIG_TABLES = [
+  'license_types', 'license_subtypes', 'device_types', 'device_owners',
+  'server_owners', 'server_types', 'server_environments', 'ip_subnets',
+  'asset_models', 'reminder_types',
+] as const;
+for (const table of CONFIG_TABLES) {
+  app.use(`/api/${table}`, createCrudRouter(table, {
+    insertRoles: ['admin', 'manager'],
+    updateRoles: ['admin', 'manager'],
+    deleteRoles: ['admin'],
+  }));
+}
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

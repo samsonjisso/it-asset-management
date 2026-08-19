@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
 const JWT_EXPIRES_IN = '7d';
 
-export type UserRole = 'admin' | 'manager' | 'register_user' | 'assessor';
+export type UserRole = 'admin' | 'manager' | 'register_user' | 'assessor' | 'editor' | 'reader' | 'audit';
 
 export interface AuthProfile {
   id: string;
@@ -55,5 +55,5 @@ export function requireRole(...roles: UserRole[]) {
   };
 }
 
-export const WRITE_ROLES: UserRole[] = ['admin', 'manager', 'register_user'];
-export const MANAGE_ROLES: UserRole[] = ['admin', 'manager'];
+export const WRITE_ROLES: UserRole[] = ['admin', 'manager', 'register_user', 'editor'];
+export const MANAGE_ROLES: UserRole[] = ['admin', 'manager', 'editor'];

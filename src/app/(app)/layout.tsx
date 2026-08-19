@@ -4,6 +4,7 @@ import { useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { Layout } from '../../components/Layout';
+import { ForcePasswordChangePage } from '../../views/ForcePasswordChangePage';
 
 export default function AppShellLayout({ children }: { children: ReactNode }) {
   const { session, profile, loading } = useAuth();
@@ -40,6 +41,8 @@ export default function AppShellLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  if (profile.must_change_password) return <ForcePasswordChangePage />;
 
   return <Layout>{children}</Layout>;
 }

@@ -1,5 +1,4 @@
 "use client";
-
 // Local replacement for the old Supabase client.
 // Keeps the same shape (`supabase.from(table)...`, `supabase.auth...`)
 // that the rest of the app already uses, but talks to our own Express
@@ -8,7 +7,11 @@
 
 import { api, getToken, setToken } from './api';
 
-export type UserRole = 'admin' | 'manager' | 'register_user' | 'assessor';
+// admin  - full system access and management
+// editor - can add and modify asset information
+// reader - view-only access
+// audit  - can view all system information but cannot edit or delete anything
+export type UserRole = 'admin' | 'manager' | 'register_user' | 'assessor' | 'editor' | 'reader' | 'audit';
 
 export interface AuthUserLike {
   id: string;
@@ -27,6 +30,7 @@ export interface Profile {
   role: UserRole;
   phone?: string | null;
   is_active: boolean;
+  must_change_password: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,19 +46,26 @@ export interface Department {
 
 export interface PCRegistration {
   id: string;
+  asset_id?: string | null;
   hostname: string;
   monitor_serial?: string | null;
   asset_tag?: string | null;
   service_tag?: string | null;
   mac_address?: string | null;
   product_key?: string | null;
+  cpu?: string | null;
+  memory_detail?: string | null;
+  generation_detail?: string | null;
   ip_address?: string | null;
+  owner_name?: string | null;
   department_id?: string | null;
   floor_number?: string | null;
   switch_port_number?: string | null;
   access_switch_ip?: string | null;
   access_switch_name?: string | null;
   patch_level_number?: string | null;
+  model_id?: string | null;
+  image?: string | null;
   notes?: string | null;
   registered_by?: string | null;
   created_at: string;
@@ -62,9 +73,29 @@ export interface PCRegistration {
   department?: Department | null;
 }
 
+export interface LicenseType {
+  id: string;
+  code: string;
+  label: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+export interface LicenseSubtype {
+  id: string;
+  license_type_id: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
 export interface License {
   id: string;
-  license_type: 'operating_system' | 'email_365' | 'veam_backup' | 'vmware' | 'other';
+  asset_id?: string | null;
+  license_type: string;
   license_subtype?: string | null;
   vendor?: string | null;
   license_key?: string | null;
@@ -78,32 +109,131 @@ export interface License {
   updated_at: string;
 }
 
+export interface DeviceTypeField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  type?: 'text' | 'number' | 'date';
+  required?: boolean; // if true, this field must be filled in before the device can be saved
+}
+
+export interface DeviceType {
+  id: string;
+  code: string;
+  label: string;
+  icon?: string | null;
+  base_fields?: string | null; // JSON-encoded string[] of standard field keys shown for this type
+  required_base_fields?: string | null; // JSON-encoded string[] — subset of base_fields that are mandatory
+  core_fields?: string | null; // JSON-encoded string[] — which of device_owner/device_model/hostname are shown
+  required_core_fields?: string | null; // JSON-encoded string[] — subset of core_fields that are mandatory
+  field_labels?: string | null; // JSON-encoded { [fieldKey]: string } — custom labels for standard/core fields
+  fields?: string | null; // JSON-encoded DeviceTypeField[] of type-specific extra fields
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+export interface DeviceOwner {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
 export interface Device {
   id: string;
+  asset_id?: string | null;
   device_type: string;
-  device_owner: 'infrastructure_management' | 'application_management' | 'information_security';
+  device_owner?: string | null;
   device_model?: string | null;
-  hostname: string;
+  hostname?: string | null;
   ip_address?: string | null;
   serial_number?: string | null;
   mac_address?: string | null;
   location?: string | null;
   rack_number?: string | null;
+  extra_data?: string | null; // JSON-encoded Record<string, string> keyed by DeviceTypeField.key
+  model_id?: string | null;
+  image?: string | null;
   notes?: string | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
 }
 
+export interface ServerOwner {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: server types (Redhat, Ubuntu, Windows Server, ...)
+// offered on the Server Registration form.
+export interface ServerType {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: server environments (Production, Test, Standby, ...)
+// offered on the Server Registration form.
+export interface ServerEnvironment {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: maps an IP prefix (e.g. "10.6.13.") to a human label
+// (e.g. "Head Office - Server Room") so forms can auto-detect which
+// network segment an entered IP address belongs to.
+export interface IPSubnet {
+  id: string;
+  prefix: string;
+  label: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: predefined computer/device models with a reference
+// photo, selectable when registering a PC or device.
+export interface AssetModel {
+  id: string;
+  target: 'pc' | 'device';
+  device_type?: string | null;
+  name: string;
+  manufacturer?: string | null;
+  image?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
 export interface Server {
   id: string;
-  server_type: 'redhat' | 'ubuntu' | 'windows_server' | 'other';
+  asset_id?: string | null;
+  server_type: string;
   server_type_other?: string | null;
   hostname: string;
   ip_address?: string | null;
   ssh_port: number;
-  environment: 'production' | 'test' | 'standby';
-  server_owner: 'application' | 'information_security' | 'infrastructure_management';
+  environment: string;
+  server_owner: string;
+  network_subnet?: string | null;
+  image?: string | null;
   ram?: string | null;
   cpu?: string | null;
   storage?: string | null;
@@ -113,6 +243,14 @@ export interface Server {
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ReminderType {
+  id: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
 }
 
 export interface Reminder {
@@ -132,6 +270,7 @@ export interface Reminder {
 
 export interface Asset {
   id: string;
+  asset_id?: string | null;
   asset_name: string;
   asset_type: string;
   department_id?: string | null;
@@ -158,12 +297,15 @@ export interface IPAddress {
   department_id?: string | null;
   ip_owner?: string | null;
   mac_address?: string | null;
+  access_switch_port?: string | null;
+  patch_panel_label?: string | null;
   status: 'assigned' | 'reserved' | 'available' | 'decommissioned';
   notes?: string | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
   department?: Department | null;
+  related_assets?: { pc?: { id:string; asset_id?:string|null; hostname?:string|null }|null; device?: { id:string; asset_id?:string|null; hostname?:string|null; device_type?:string|null }|null; server?: { id:string; asset_id?:string|null; hostname?:string|null; server_type?:string|null }|null; };
 }
 
 type AuthListener = (session: AuthSessionLike | null) => void;
@@ -384,18 +526,31 @@ export const supabase = {
         email: string;
         password: string;
         email_confirm?: boolean;
-        user_metadata?: { full_name?: string; role?: UserRole };
+        user_metadata?: { full_name?: string; role?: UserRole; phone?: string; must_change_password?: boolean };
       }) {
         const res = await api.post<{ user: AuthUserLike }>('/auth/admin/create-user', {
           email: payload.email,
           password: payload.password,
           full_name: payload.user_metadata?.full_name,
           role: payload.user_metadata?.role,
+          phone: payload.user_metadata?.phone,
+          must_change_password: payload.user_metadata?.must_change_password,
         });
         if (res.error || !res.data) {
           return { data: { user: null }, error: { message: res.error?.message ?? 'Could not create user' } };
         }
         return { data: { user: res.data.user }, error: null };
+      },
+
+      // Admin resets another user's password. By default this also
+      // forces that user to set a new password at their next login.
+      async resetUserPassword(userId: string, password: string, forceChange = true) {
+        const res = await api.post<{ ok: boolean }>(`/auth/admin/reset-password/${userId}`, {
+          password,
+          must_change_password: forceChange,
+        });
+        if (res.error) return { error: { message: res.error.message } };
+        return { error: null };
       },
     },
   },

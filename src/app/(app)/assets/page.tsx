@@ -1,5 +1,2 @@
-import { AssetsPage } from "./AssetsPage";
-
-export default function Page() {
-  return <AssetsPage />;
-}
+import { redirect } from 'next/navigation';
+export default function Page(){ redirect('/pc'); }

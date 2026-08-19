@@ -1,63 +1,63 @@
 "use client";
-
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, Server } from '../lib/supabase';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, Server, ServerOwner, ServerType, ServerEnvironment, IPSubnet } from '../lib/supabase';
+import { matchSubnet } from '../lib/subnet';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { DataTable, Column } from '../components/DataTable';
 import { Modal } from '../components/Modal';
-import { Field, TextInput, SelectInput, TextArea, Button } from '../components/FormControls';
-import { Plus, Pencil, Trash2, Server as ServerIcon, Download, Cpu, MemoryStick, HardDrive as StorageIcon } from 'lucide-react';
-
-const serverTypes = [
-  { value: 'redhat', label: 'Redhat' },
-  { value: 'ubuntu', label: 'Ubuntu' },
-  { value: 'windows_server', label: 'Windows Server' },
-  { value: 'other', label: 'Other' },
-];
-
-const environments = [
-  { value: 'production', label: 'Production' },
-  { value: 'test', label: 'Test' },
-  { value: 'standby', label: 'Standby' },
-];
-
-const ownerOptions = [
-  { value: 'application', label: 'Application' },
-  { value: 'information_security', label: 'Information Security' },
-  { value: 'infrastructure_management', label: 'Infrastructure Management' },
-];
+import { DetailsModal, DetailSection } from '../components/DetailsModal';
+import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '../components/FormControls';
+import { isValidIPv4, isValidPort, IPV4_PATTERN } from '../lib/validation';
+import { ImageInput } from '../components/ImageInput';
+import { ZoomImage } from '../components/ZoomImage';
+import { Plus, Pencil, Trash2, Eye, Server as ServerIcon, Download } from 'lucide-react';
 
 const emptyForm = {
-  server_type: 'redhat' as Server['server_type'],
-  server_type_other: '',
+  server_type: '',
   hostname: '',
   ip_address: '',
   ssh_port: '22',
-  environment: 'production' as Server['environment'],
-  server_owner: 'infrastructure_management' as Server['server_owner'],
+  environment: '',
+  server_owner: '',
   ram: '',
   cpu: '',
   storage: '',
   os_release: '',
   host_location: '',
+  image: null as string | null,
   notes: '',
 };
 
-export function ServerRegistrationPage() {
+export function ServerRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number } = {}) {
   const { canWrite, hasRole, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<Server[]>([]);
+  const [serverOwners, setServerOwners] = useState<ServerOwner[]>([]);
+  const [serverTypes, setServerTypes] = useState<ServerType[]>([]);
+  const [environments, setEnvironments] = useState<ServerEnvironment[]>([]);
+  const [subnets, setSubnets] = useState<IPSubnet[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Server | null>(null);
+  const [viewing, setViewing] = useState<Server | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('servers').select('*').order('created_at', { ascending: false });
-    if (data) setRecords(data as Server[]);
+    const [serversRes, ownersRes, typesRes, envRes, subnetsRes] = await Promise.all([
+      supabase.from('servers').select('*').order('created_at', { ascending: false }),
+      supabase.from('server_owners').select('*').order('label'),
+      supabase.from('server_types').select('*').order('label'),
+      supabase.from('server_environments').select('*').order('label'),
+      supabase.from('ip_subnets').select('*').order('prefix'),
+    ]);
+    if (serversRes.data) setRecords(serversRes.data as Server[]);
+    if (ownersRes.data) setServerOwners(ownersRes.data as ServerOwner[]);
+    if (typesRes.data) setServerTypes(typesRes.data as ServerType[]);
+    if (envRes.data) setEnvironments(envRes.data as ServerEnvironment[]);
+    if (subnetsRes.data) setSubnets(subnetsRes.data as IPSubnet[]);
     setLoading(false);
   }, []);
 
@@ -67,15 +67,24 @@ export function ServerRegistrationPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, server_owner: serverOwners[0]?.code ?? '', server_type: serverTypes[0]?.code ?? '', environment: environments[0]?.code ?? '' });
     setModalOpen(true);
   };
+
+  const lastAutoOpen = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (autoOpenCreate !== undefined && autoOpenCreate !== lastAutoOpen.current) {
+      lastAutoOpen.current = autoOpenCreate;
+      openAdd();
+    }
+  }, [autoOpenCreate]);
+
+  const openView = (rec: Server) => setViewing(rec);
 
   const openEdit = (rec: Server) => {
     setEditing(rec);
     setForm({
       server_type: rec.server_type,
-      server_type_other: rec.server_type_other ?? '',
       hostname: rec.hostname,
       ip_address: rec.ip_address ?? '',
       ssh_port: rec.ssh_port.toString(),
@@ -86,10 +95,13 @@ export function ServerRegistrationPage() {
       storage: rec.storage ?? '',
       os_release: rec.os_release ?? '',
       host_location: rec.host_location ?? '',
+      image: rec.image ?? null,
       notes: rec.notes ?? '',
     });
     setModalOpen(true);
   };
+
+  const detectedSubnet = matchSubnet(form.ip_address, subnets);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,15 +109,36 @@ export function ServerRegistrationPage() {
       toast('Server hostname is required', 'error');
       return;
     }
+    if (!form.server_owner) {
+      toast('Server Owner is required. Ask an admin to add one under Server Owner Management.', 'error');
+      return;
+    }
+    if (!form.server_type) {
+      toast('Server Type is required. Add one under Customization > Server Types.', 'error');
+      return;
+    }
+    if (!form.environment) {
+      toast('Server Environment is required. Add one under Customization > Server Environments.', 'error');
+      return;
+    }
+    if (form.ip_address.trim() && !isValidIPv4(form.ip_address)) {
+      toast('Server IP Address must be a valid IPv4 address (e.g., 10.6.13.45)', 'error');
+      return;
+    }
+    if (form.ssh_port.trim() && !isValidPort(form.ssh_port)) {
+      toast('SSH Port Number must be a number between 1 and 65535', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
       server_type: form.server_type,
-      server_type_other: form.server_type === 'other' ? form.server_type_other || null : null,
       hostname: form.hostname,
       ip_address: form.ip_address || null,
       ssh_port: parseInt(form.ssh_port) || 22,
       environment: form.environment,
       server_owner: form.server_owner,
+      network_subnet: detectedSubnet?.label ?? null,
+      image: form.image,
       ram: form.ram || null,
       cpu: form.cpu || null,
       storage: form.storage || null,
@@ -137,11 +170,12 @@ export function ServerRegistrationPage() {
   };
 
   const exportCSV = () => {
-    const headers = ['Server Type', 'Hostname', 'IP Address', 'SSH Port', 'Environment', 'Owner', 'RAM', 'CPU', 'Storage', 'OS Release', 'Host Location', 'Created At'];
+    const headers = ['Asset ID', 'Server Type', 'Hostname', 'IP Address', 'Network Subnet', 'SSH Port', 'Environment', 'Owner', 'RAM', 'CPU', 'Storage', 'OS Release', 'Host Location', 'Created At'];
     const rows = records.map((r) => [
-      serverTypes.find((t) => t.value === r.server_type)?.label ?? r.server_type,
-      r.hostname, r.ip_address ?? '', r.ssh_port, environments.find((e) => e.value === r.environment)?.label ?? r.environment,
-      ownerOptions.find((o) => o.value === r.server_owner)?.label ?? r.server_owner,
+      r.asset_id ?? '',
+      serverTypes.find((t) => t.code === r.server_type)?.label ?? r.server_type_other ?? r.server_type,
+      r.hostname, r.ip_address ?? '', r.network_subnet ?? '', r.ssh_port, environments.find((e) => e.code === r.environment)?.label ?? r.environment,
+      serverOwners.find((o) => o.code === r.server_owner)?.label ?? r.server_owner,
       r.ram ?? '', r.cpu ?? '', r.storage ?? '', r.os_release ?? '', r.host_location ?? '',
       new Date(r.created_at).toLocaleDateString(),
     ]);
@@ -160,46 +194,87 @@ export function ServerRegistrationPage() {
     test: 'text-blue-700 bg-blue-50 border-blue-200',
     standby: 'text-gray-700 bg-gray-50 border-gray-200',
   };
+  const defaultEnvColor = 'text-brand-700 bg-brand-50 border-brand-200';
 
   const columns: Column<Server>[] = [
-    { key: 'hostname', label: 'Hostname', sortable: true, sortValue: (r) => r.hostname, render: (r) => (
+    { key: 'asset_id', label: 'Key', sortable: true, sortValue: (r) => r.asset_id ?? '', render: (r) => r.asset_id ? <span className="font-mono text-xs font-semibold text-brand-700">{r.asset_id}</span> : <span className="text-gray-400 italic">-</span> },
+    { key: 'hostname', label: 'Name', sortable: true, sortValue: (r) => r.hostname, render: (r) => (
       <div className="flex items-center gap-2">
-        <ServerIcon size={16} className="text-[#343494]" />
+        {r.image ? (
+          <img src={r.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+        ) : (
+          <ServerIcon size={16} className="text-brand-600" />
+        )}
         <span className="font-medium">{r.hostname}</span>
       </div>
     )},
-    { key: 'server_type', label: 'Type', sortable: true, sortValue: (r) => r.server_type, render: (r) => r.server_type === 'other' ? r.server_type_other ?? 'Other' : serverTypes.find((t) => t.value === r.server_type)?.label ?? r.server_type },
-    { key: 'ip_address', label: 'IP Address', render: (r) => r.ip_address ?? '-' },
-    { key: 'ssh_port', label: 'SSH Port', render: (r) => r.ssh_port },
+    { key: 'server_type', label: 'Type', sortable: true, sortValue: (r) => r.server_type, render: (r) => serverTypes.find((t) => t.code === r.server_type)?.label ?? r.server_type_other ?? r.server_type },
     { key: 'environment', label: 'Environment', render: (r) => (
-      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${envColors[r.environment]}`}>{environments.find((e) => e.value === r.environment)?.label}</span>
+      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${envColors[r.environment] ?? defaultEnvColor}`}>{environments.find((e) => e.code === r.environment)?.label ?? r.environment}</span>
     )},
-    { key: 'server_owner', label: 'Owner', render: (r) => ownerOptions.find((o) => o.value === r.server_owner)?.label ?? r.server_owner },
-    { key: 'ram', label: 'RAM', render: (r) => r.ram ? <span className="flex items-center gap-1"><MemoryStick size={12} />{r.ram}</span> : '-' },
-    { key: 'cpu', label: 'CPU', render: (r) => r.cpu ? <span className="flex items-center gap-1"><Cpu size={12} />{r.cpu}</span> : '-' },
-    { key: 'storage', label: 'Storage', render: (r) => r.storage ? <span className="flex items-center gap-1"><StorageIcon size={12} />{r.storage}</span> : '-' },
-    { key: 'os_release', label: 'OS Release', render: (r) => r.os_release ?? '-' },
-    { key: 'host_location', label: 'Host Location', render: (r) => r.host_location ?? '-' },
+    { key: 'server_owner', label: 'Owner', render: (r) => serverOwners.find((o) => o.code === r.server_owner)?.label ?? r.server_owner },
+    { key: 'network_subnet', label: 'Subnet', render: (r) => r.network_subnet ?? <span className="text-gray-300">-</span> },
     { key: 'created_at', label: 'Registered', sortable: true, sortValue: (r) => r.created_at, render: (r) => new Date(r.created_at).toLocaleDateString() },
     {
       key: 'actions',
       label: 'Actions',
-      render: (r) => canWrite() ? (
+      render: (r) => (
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => openEdit(r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={16} /></button>
-          {hasRole('admin', 'manager') && <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}
+          <button onClick={() => openView(r)} className="p-1.5 text-brand-600 hover:bg-brand-50 rounded-lg" title="View Details"><Eye size={16} /></button>
+          {canWrite() && <button onClick={() => openEdit(r)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit"><Pencil size={16} /></button>}
+          {canWrite() && hasRole('admin') && <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete"><Trash2 size={16} /></button>}
         </div>
-      ) : <span className="text-gray-400 text-xs">Read only</span>,
+      ),
     },
   ];
+
+  const viewSections: DetailSection[] = viewing ? [
+    {
+      title: 'Server Information',
+      fields: [
+        { label: 'Asset ID', value: viewing.asset_id, mono: true },
+        { label: 'Hostname', value: viewing.hostname },
+        { label: 'Server Type', value: serverTypes.find((t) => t.code === viewing.server_type)?.label ?? viewing.server_type_other ?? viewing.server_type },
+        { label: 'Environment', value: environments.find((e) => e.code === viewing.environment)?.label ?? viewing.environment },
+        { label: 'Server Owner', value: serverOwners.find((o) => o.code === viewing.server_owner)?.label ?? viewing.server_owner },
+        { label: 'Photo', value: viewing.image ? <ZoomImage src={viewing.image} size={144} /> : null, full: true },
+      ],
+    },
+    {
+      title: 'Network',
+      fields: [
+        { label: 'IP Address', value: viewing.ip_address, mono: true },
+        { label: 'Network Subnet', value: viewing.network_subnet },
+        { label: 'SSH Port', value: viewing.ssh_port },
+      ],
+    },
+    {
+      title: 'Resources',
+      fields: [
+        { label: 'RAM', value: viewing.ram },
+        { label: 'CPU', value: viewing.cpu },
+        { label: 'Storage', value: viewing.storage },
+        { label: 'OS Release', value: viewing.os_release },
+        { label: 'Host Location', value: viewing.host_location },
+      ],
+    },
+    {
+      title: 'Other',
+      fields: [
+        { label: 'Notes', value: viewing.notes, full: true },
+        { label: 'Registered', value: new Date(viewing.created_at).toLocaleString() },
+        { label: 'Last Updated', value: new Date(viewing.updated_at).toLocaleString() },
+      ],
+    },
+  ] : [];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#343494] text-white flex items-center justify-center"><ServerIcon size={22} /></div>
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 text-white flex items-center justify-center shadow-soft"><ServerIcon size={22} /></div>
           <div>
-            <h1 className="text-xl font-bold text-[#343494]">Server Registration</h1>
+            <h1 className="text-xl font-bold text-brand-600">Server Registration</h1>
             <p className="text-sm text-gray-500">{records.length} registered servers</p>
           </div>
         </div>
@@ -210,7 +285,7 @@ export function ServerRegistrationPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-[#343494]/30 border-t-[#343494] rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-20"><div className="w-8 h-8 border-3 border-brand-600/30 border-t-brand-600 rounded-full animate-spin" /></div>
       ) : (
         <DataTable
           columns={columns}
@@ -219,39 +294,58 @@ export function ServerRegistrationPage() {
           searchPlaceholder="Search by hostname, IP, OS..."
           dateFilterKey="created_at"
           emptyMessage="No servers registered yet"
+          onRowClick={openView}
         />
       )}
 
+      <DetailsModal
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={viewing?.hostname ?? ''}
+        subtitle={viewing?.asset_id ?? undefined}
+        icon={<ServerIcon size={22} />}
+        sections={viewSections}
+        onEdit={viewing && canWrite() ? () => { const rec = viewing; setViewing(null); openEdit(rec); } : undefined}
+        editLabel="Edit Server"
+      />
+
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Server' : 'Register New Server'} size="lg">
         <form onSubmit={handleSave} className="space-y-4">
+          {editing?.asset_id && (
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+              <span className="text-xs font-medium text-gray-500">Asset ID</span>
+              <span className="font-mono text-sm font-semibold text-brand-700">{editing.asset_id}</span>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Server Type" required>
-              <SelectInput value={form.server_type} onChange={(e) => setForm({ ...form, server_type: e.target.value as Server['server_type'] })}>
-                {serverTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            <Field label="Server Type" required hint={serverTypes.length === 0 ? "No server types configured yet — add one under Customization > Server Types." : undefined}>
+              <SelectInput value={form.server_type} onChange={(e) => setForm({ ...form, server_type: e.target.value })} required>
+                {serverTypes.length === 0 && <option value="">No server types configured</option>}
+                {serverTypes.map((t) => <option key={t.id} value={t.code}>{t.label}</option>)}
               </SelectInput>
             </Field>
-            {form.server_type === 'other' && (
-              <Field label="Specify Other Type" required>
-                <TextInput value={form.server_type_other} onChange={(e) => setForm({ ...form, server_type_other: e.target.value })} placeholder="Specify server type" required />
-              </Field>
-            )}
             <Field label="Server Name / Hostname" required>
               <TextInput value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} placeholder="e.g., PROD-APP-01" required />
             </Field>
-            <Field label="Server IP Address">
-              <TextInput value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="10.6.x.x" />
+            <Field
+              label="Server IP Address"
+              hint={form.ip_address ? (detectedSubnet ? `Detected subnet: ${detectedSubnet.label}` : 'No matching subnet — add one under Customization > IP Subnets') : 'e.g., 10.6.13.45'}
+            >
+              <TextInput value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="10.6.x.x" pattern={IPV4_PATTERN} title="Enter a valid IPv4 address, e.g. 10.6.13.45" />
             </Field>
             <Field label="SSH Port Number">
-              <TextInput type="number" value={form.ssh_port} onChange={(e) => setForm({ ...form, ssh_port: e.target.value })} placeholder="22" />
+              <NumberInput value={form.ssh_port} onChange={(e) => setForm({ ...form, ssh_port: e.target.value })} placeholder="22" min={1} max={65535} />
             </Field>
-            <Field label="Server Environment" required>
-              <SelectInput value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value as Server['environment'] })}>
-                {environments.map((env) => <option key={env.value} value={env.value}>{env.label}</option>)}
+            <Field label="Server Environment" required hint={environments.length === 0 ? "No environments configured yet — add one under Customization > Server Environments." : undefined}>
+              <SelectInput value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value })} required>
+                {environments.length === 0 && <option value="">No environments configured</option>}
+                {environments.map((env) => <option key={env.id} value={env.code}>{env.label}</option>)}
               </SelectInput>
             </Field>
-            <Field label="Server Owner" required>
-              <SelectInput value={form.server_owner} onChange={(e) => setForm({ ...form, server_owner: e.target.value as Server['server_owner'] })}>
-                {ownerOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <Field label="Server Owner" required hint={serverOwners.length === 0 ? "No owners configured yet — an admin can add one under Server Owner Management." : undefined}>
+              <SelectInput value={form.server_owner} onChange={(e) => setForm({ ...form, server_owner: e.target.value })} required>
+                {serverOwners.length === 0 && <option value="">No server owners configured</option>}
+                {serverOwners.map((o) => <option key={o.id} value={o.code}>{o.label}</option>)}
               </SelectInput>
             </Field>
             <Field label="Resource RAM">
@@ -270,6 +364,7 @@ export function ServerRegistrationPage() {
               <TextInput value={form.host_location} onChange={(e) => setForm({ ...form, host_location: e.target.value })} placeholder="e.g., ESXi 1, ESXi 2" />
             </Field>
           </div>
+          <ImageInput value={form.image} onChange={(dataUrl) => setForm({ ...form, image: dataUrl })} label="Server Photo" hint="Optional — helps identify this server visually" />
           <Field label="Notes">
             <TextArea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Additional notes..." />
           </Field>
