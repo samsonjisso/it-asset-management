@@ -1,14 +1,8 @@
-"use client";
+import React from 'react'
+import { DeviceRegistrationPage } from './DeviceRegistrationPage'
 
-import { useSearchParams } from "next/navigation";
-import { DeviceRegistrationPage } from "./DeviceRegistrationPage";
-
-export default function Page() {
-  const searchParams = useSearchParams();
-  const register = searchParams.get("register");
+export default function page() {
   return (
-    <DeviceRegistrationPage
-      autoOpenCreate={register ? Number(register) : undefined}
-    />
-  );
+    <DeviceRegistrationPage/>
+  )
 }
