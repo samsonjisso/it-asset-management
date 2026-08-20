@@ -99,10 +99,9 @@ export function AboutPage() {
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#343494] to-[#4e4ec1] text-white flex items-center justify-center text-2xl font-bold">
-              ST
+              IN
             </div>
             <div>
-              <h4 className="text-lg font-bold text-gray-900">Samuel T.</h4>
               <p className="text-sm text-gray-600">Server and Datacenter Team</p>
               <p className="text-sm text-[#343494] font-medium">Infrastructure Management Department</p>
             </div>

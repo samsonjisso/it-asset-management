@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.js";
 
 :root {
   --gbb-primary: #343494;
@@ -12,6 +13,30 @@
   --gbb-text: #0c0c23;
   --gbb-text-muted: #43436b;
   --gbb-border: #dadaf1;
+  --gbb-surface-muted: #f8f8fd;
+  --gbb-surface-hover: #f0f0fa;
+  --gbb-focus: rgba(52, 52, 148, 0.22);
+  --gbb-login-start: #242467;
+  --gbb-login-mid: #343494;
+  --gbb-login-end: #4e4ec1;
+  --gbb-dashboard-start: #343494;
+  --gbb-dashboard-end: #4e4ec1;
+}
+
+html.dark {
+  --gbb-bg: #11111b;
+  --gbb-surface: #1b1b29;
+  --gbb-surface-muted: #161621;
+  --gbb-surface-hover: #242431;
+  --gbb-text: #f4f4f8;
+  --gbb-text-muted: #bcbcca;
+  --gbb-border: #343443;
+  --gbb-focus: rgba(183, 183, 255, 0.3);
+  --gbb-login-start: #0b0b18;
+  --gbb-login-mid: #171742;
+  --gbb-login-end: #292968;
+  --gbb-dashboard-start: #191943;
+  --gbb-dashboard-end: #292968;
 }
 
 * {
@@ -161,10 +186,98 @@ body {
 .gbb-input:focus {
   outline: none;
   border-color: var(--gbb-primary);
-  box-shadow: 0 0 0 3px rgba(102, 16, 242, 0.13);
+  box-shadow: 0 0 0 3px var(--gbb-focus);
 }
 
-html.dark body { background:#11111b; color:#e8e8f2; color-scheme:dark; }
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gbb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.gbb-button:hover {
+  transform: translateY(-1px);
+}
+
+.gbb-button:focus-visible,
+.gbb-icon-button:focus-visible {
+  outline: 3px solid var(--gbb-focus);
+  outline-offset: 2px;
+}
+
+.gbb-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 0.625rem;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.gbb-icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.gbb-theme-button {
+  color: var(--gbb-primary) !important;
+}
+
+.gbb-theme-button svg {
+  stroke: var(--gbb-primary) !important;
+}
+
+.gbb-theme-button:hover {
+  background-color: var(--gbb-surface-hover) !important;
+  color: var(--gbb-primary-dark) !important;
+}
+
+.gbb-theme-button:hover svg {
+  stroke: var(--gbb-primary-dark) !important;
+}
+
+html.dark .gbb-theme-button {
+  color: #b7b7ff !important;
+}
+
+html.dark .gbb-theme-button svg {
+  stroke: #b7b7ff !important;
+}
+
+html.dark .gbb-theme-button:hover {
+  background-color: #242431 !important;
+  color: #b7b7ff !important;
+}
+
+html.dark .gbb-theme-button:hover svg {
+  stroke: #b7b7ff !important;
+}
+
+.gbb-login-shell {
+  background: linear-gradient(135deg, var(--gbb-login-start), var(--gbb-login-mid), var(--gbb-login-end));
+}
+
+.gbb-login-panel {
+  background-color: color-mix(in srgb, var(--gbb-surface) 96%, transparent);
+  color: var(--gbb-text);
+}
+
+.gbb-dashboard-banner {
+  background: linear-gradient(135deg, var(--gbb-dashboard-start), var(--gbb-dashboard-end));
+}
+
+html.dark body { background:var(--gbb-bg); color:var(--gbb-text); color-scheme:dark; }
 html.dark .bg-white { background-color:#1b1b29 !important; }
 html.dark .bg-gray-50 { background-color:#161621 !important; }
 html.dark .bg-gray-100 { background-color:#20202c !important; }
@@ -180,3 +293,5 @@ html.dark input, html.dark textarea, html.dark select { background-color:#181824
 html.dark table { color:#eeeeF5; }
 html.dark tr { border-color:#343443 !important; }
 html.dark .hover\:bg-gray-50:hover { background-color:#242431 !important; }
+html.dark .bg-\[\#f5f5fc\] { background-color:var(--gbb-bg) !important; }
+html.dark .border-\[\#dadaf1\] { border-color:var(--gbb-border) !important; }

@@ -40,7 +40,7 @@ async function request<T = any>(method: string, path: string, body?: unknown): P
   }
 
   if (!res.ok) {
-    if (res.status === 401 && typeof window !== 'undefined') {
+    if (res.status === 401 && path !== '/auth/login' && typeof window !== 'undefined') {
       sessionStorage.setItem('gbb_return_path', window.location.pathname + window.location.search);
       window.dispatchEvent(new Event('gbb:session-expired'));
     }
@@ -68,18 +68,3 @@ export function pingIp(ip: string) {
   return request<PingResult>('POST', '/network/ping', { ip });
 }
 
-export interface ComputerInfoResult {
-  ip: string | null;
-  hostname: string | null;
-  mac_address: string | null;
-  owner_name: string | null;
-  notes: string;
-}
-
-// Best-effort auto-detection of the calling PC's hostname/IP/MAC address
-// from the network layer. Only meaningful when run from the browser of the
-// PC being registered - see server/routes/network.js for what it can and
-// can't see.
-export function fetchComputerInfo() {
-  return request<ComputerInfoResult>('GET', '/network/computer-info');
-}

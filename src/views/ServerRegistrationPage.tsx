@@ -201,7 +201,7 @@ export function ServerRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: nu
     { key: 'hostname', label: 'Name', sortable: true, sortValue: (r) => r.hostname, render: (r) => (
       <div className="flex items-center gap-2">
         {r.image ? (
-          <img src={r.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />
+          <img src={r.image} alt="" loading="lazy" decoding="async" className="w-6 h-6 rounded object-cover shrink-0" />
         ) : (
           <ServerIcon size={16} className="text-brand-600" />
         )}

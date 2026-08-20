@@ -17,10 +17,10 @@ export default function Login() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5f5fc]">
+      <div className="gbb-login-shell min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[#343494]/30 border-t-[#343494] rounded-full animate-spin" />
-          <p className="text-sm text-gray-600">Loading Goh Betoch Bank IT Asset Inventory...</p>
+          <p className="text-sm text-white/80">Loading Goh Betoch Bank IT Asset Inventory...</p>
         </div>
       </div>
     );

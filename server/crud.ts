@@ -42,9 +42,10 @@ async function attachIpRelations(row: Row | undefined): Promise<Row | undefined>
   if (!row || !row.id) return row;
   const connection = await db.getConnection();
   try {
-    const [pc] = await connection.execute('SELECT id, asset_id, hostname FROM pc_registrations WHERE ip_address_id = ?', [row.id]);
-    const [devices] = await connection.execute('SELECT id, asset_id, hostname, device_type FROM devices WHERE ip_address_id = ?', [row.id]);
-    const [servers] = await connection.execute('SELECT id, asset_id, hostname, server_type FROM servers WHERE ip_address_id = ?', [row.id]);
+    const relationId = String(row.id);
+    const [pc] = await connection.execute('SELECT id, asset_id, hostname FROM pc_registrations WHERE ip_address_id = ?', [relationId]);
+    const [devices] = await connection.execute('SELECT id, asset_id, hostname, device_type FROM devices WHERE ip_address_id = ?', [relationId]);
+    const [servers] = await connection.execute('SELECT id, asset_id, hostname, server_type FROM servers WHERE ip_address_id = ?', [relationId]);
     row.related_assets = {
       pc: (pc as Row[])[0] ?? null,
       device: (devices as Row[])[0] ?? null,
@@ -115,6 +116,7 @@ export interface CrudRouterOptions {
   autoAssetId?: boolean;
   afterInsert?: (connection: any, id: string, body: Row) => Promise<void>;
   afterUpdate?: (connection: any, id: string, body: Row) => Promise<void>;
+  afterDelete?: (connection: any, id: string) => Promise<void>;
 }
 
 /**
@@ -132,6 +134,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
     autoAssetId = false,
     afterInsert,
     afterUpdate,
+    afterDelete,
   } = opts;
 
   const router = Router();
@@ -293,7 +296,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
           values as any[]
         );
         if ((result[0] as any).affectedRows === 0) { await connection.rollback(); return res.status(404).json({ error: 'Not found' }); }
-        if (afterUpdate) await afterUpdate(connection, req.params.id, body);
+        if (afterUpdate) await afterUpdate(connection, String(req.params.id), body);
         await connection.commit();
         const [rows] = await connection.execute(`SELECT * FROM ${table} WHERE id = ?`, [req.params.id]);
         const row = (rows as Row[])[0];
@@ -315,6 +318,7 @@ export function createCrudRouter(table: string, opts: CrudRouterOptions = {}) {
       try {
         const result = await connection.execute(`DELETE FROM ${table} WHERE id = ?`, [req.params.id]);
         if ((result[0] as any).affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+        if (afterDelete) await afterDelete(connection, String(req.params.id));
         res.json({ ok: true });
       } finally {
         connection.release();

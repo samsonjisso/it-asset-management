@@ -1,6 +1,9 @@
 -- Goh Betoch Bank IT Asset Inventory - MariaDB schema
 -- Consolidated schema based on the feature-complete asset-management model.
 
+CREATE DATABASE IF NOT EXISTS gbb_inventory;
+USE gbb_inventory;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE IF NOT EXISTS profiles (
@@ -168,7 +171,8 @@ CREATE TABLE IF NOT EXISTS ip_addresses (
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   KEY idx_ip_department (department_id),
   KEY idx_ip_address (ip_address),
-  KEY idx_ip_assignment (assigned_entity_type, assigned_entity_id)
+  KEY idx_ip_assignment (assigned_entity_type, assigned_entity_id),
+  UNIQUE KEY uq_ip_addresses_hostname (hostname)
 );
 
 CREATE TABLE IF NOT EXISTS pc_registrations (
@@ -203,6 +207,7 @@ CREATE TABLE IF NOT EXISTS pc_registrations (
   FOREIGN KEY (model_id) REFERENCES asset_models(id) ON DELETE SET NULL,
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   UNIQUE KEY idx_pc_asset_id (asset_id),
+  UNIQUE KEY uq_pc_registrations_hostname (hostname),
   KEY idx_pc_department (department_id),
   KEY idx_pc_ip_address (ip_address_id),
   KEY idx_pc_created (created_at)
@@ -252,6 +257,7 @@ CREATE TABLE IF NOT EXISTS devices (
   FOREIGN KEY (model_id) REFERENCES asset_models(id) ON DELETE SET NULL,
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   UNIQUE KEY idx_devices_asset_id (asset_id),
+  UNIQUE KEY uq_devices_hostname (hostname),
   KEY idx_devices_created (created_at)
 );
 
@@ -280,6 +286,7 @@ CREATE TABLE IF NOT EXISTS servers (
   FOREIGN KEY (ip_address_id) REFERENCES ip_addresses(id) ON DELETE SET NULL,
   FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL,
   UNIQUE KEY idx_servers_asset_id (asset_id),
+  UNIQUE KEY uq_servers_hostname (hostname),
   KEY idx_servers_created (created_at)
 );
 
