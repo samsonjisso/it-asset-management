@@ -1,8 +1,8 @@
 "use client";
 
-import { ReactNode } from 'react';
-import { AuthProvider } from '../context/AuthContext';
-import { ToastProvider } from '../components/Toast';
+import { ReactNode } from "react";
+import { AuthProvider } from "../context/AuthContext";
+import { ToastProvider } from "../components/Toast";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (

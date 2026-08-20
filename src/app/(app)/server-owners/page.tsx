@@ -1,1 +1,4 @@
-import { ServerOwnersPage } from '../../../views/ServerOwnersPage'; export default function Page(){return <ServerOwnersPage/>;}
+import { ServerOwnersPage } from "./ServerOwnersPage";
+export default function Page() {
+  return <ServerOwnersPage />;
+}

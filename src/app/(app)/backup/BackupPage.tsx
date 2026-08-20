@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useToast } from '../components/Toast';
-import { Button } from '../components/FormControls';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/Toast';
+import { Button } from '@/components/FormControls';
 import { DatabaseBackup, Download, Upload, AlertTriangle, CheckCircle, FileSpreadsheet } from 'lucide-react';
 
 export function BackupPage() {

@@ -1,1 +1,4 @@
-import { LicenseTypesPage } from '../../../views/LicenseTypesPage'; export default function Page(){return <LicenseTypesPage/>;}
+import { LicenseTypesPage } from "./LicenseTypesPage";
+export default function Page() {
+  return <LicenseTypesPage />;
+}

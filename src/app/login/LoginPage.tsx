@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Button, TextInput } from '../components/FormControls';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
+import { Button, TextInput } from '../../components/FormControls';
 import { Eye, EyeOff, Lock, Mail, Shield, Server, Database, Network } from 'lucide-react';
 
 const REMEMBER_KEY = 'gbb_remember_email';

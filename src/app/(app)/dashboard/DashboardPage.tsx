@@ -10,14 +10,6 @@ import {
   Reminder,
 } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import {
-  Monitor,
-  KeyRound,
-  HardDrive,
-  Server as ServerIcon,
-  Boxes,
-  Network,
-} from "lucide-react";
 import StatsCards from "./views/StatsCards";
 import AlertsRow from "./views/AlertsRow";
 import ChartsRow from "./views/ChartsRow";
@@ -27,7 +19,6 @@ import RecentRegistration from "./views/RecentRegistration";
 export function DashboardPage() {
   const { profile } = useAuth();
   const [pcCount, setPcCount] = useState(0);
-  const [assetCount, setAssetCount] = useState(0);
   const [ipCount, setIpCount] = useState(0);
   const [licenseCount, setLicenseCount] = useState(0);
   const [deviceCount, setDeviceCount] = useState(0);
@@ -64,7 +55,6 @@ export function DashboardPage() {
       const reminders = (rem.data ?? []) as Reminder[];
 
       setPcCount(pcs.length);
-      setAssetCount(assets.length);
       setIpCount(ips.length);
       setLicenseCount(licenses.length);
       setDeviceCount(devices.length);
@@ -133,57 +123,6 @@ export function DashboardPage() {
     })();
   }, []);
 
-  const stats = [
-    {
-      label: "PCs",
-      value: pcCount,
-      icon: <Monitor size={24} />,
-      color: "from-blue-500 to-blue-600",
-      bg: "bg-blue-50",
-      href: "/pc",
-    },
-    {
-      label: "Assets",
-      value: assetCount,
-      icon: <Boxes size={24} />,
-      color: "from-teal-500 to-teal-600",
-      bg: "bg-teal-50",
-      href: "/assets",
-    },
-    {
-      label: "IP Addresses",
-      value: ipCount,
-      icon: <Network size={24} />,
-      color: "from-indigo-500 to-indigo-600",
-      bg: "bg-indigo-50",
-      href: "/ip",
-    },
-    {
-      label: "Licenses",
-      value: licenseCount,
-      icon: <KeyRound size={24} />,
-      color: "from-amber-500 to-amber-600",
-      bg: "bg-amber-50",
-      href: "/licenses",
-    },
-    {
-      label: "Devices",
-      value: deviceCount,
-      icon: <HardDrive size={24} />,
-      color: "from-green-500 to-green-600",
-      bg: "bg-green-50",
-      href: "/devices",
-    },
-    {
-      label: "Servers",
-      value: serverCount,
-      icon: <ServerIcon size={24} />,
-      color: "from-purple-500 to-purple-600",
-      bg: "bg-purple-50",
-      href: "/servers",
-    },
-  ];
-
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -205,7 +144,13 @@ export function DashboardPage() {
       </div>
 
       {/* Stats cards */}
-      <StatsCards stats={stats} />
+      <StatsCards
+        pcCount={pcCount}
+        serverCount={serverCount}
+        licenseCount={licenseCount}
+        deviceCount={deviceCount}
+        ipCount={ipCount}
+      />
 
       {/* Alerts row */}
       <AlertsRow

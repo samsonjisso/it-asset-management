@@ -1,4 +1,4 @@
-import { UserManagementPage } from "../../../views/UserManagementPage";
+import { UserManagementPage } from "./UserManagementPage";
 
 export default function Page() {
   return <UserManagementPage />;

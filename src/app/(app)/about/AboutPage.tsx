@@ -1,6 +1,6 @@
 "use client";
 
-import { GBBLogo } from '../components/GBBLogo';
+import { GBBLogo } from '../../../components/GBBLogo';
 import { Info, Mail, Phone, MapPin, Server, Database, Shield, Cpu, Code } from 'lucide-react';
 
 export function AboutPage() {

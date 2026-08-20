@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, AssetModel, DeviceType } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, TextArea, SelectInput, Button } from '../components/FormControls';
-import { ImageInput } from '../components/ImageInput';
-import { ZoomImage } from '../components/ZoomImage';
+import { supabase, AssetModel, DeviceType } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { Modal } from '../../../components/Modal';
+import { Field, TextInput, TextArea, SelectInput, Button } from '../../../components/FormControls';
+import { ImageInput } from '../../../components/ImageInput';
+import { ZoomImage } from '../../../components/ZoomImage';
 import { Plus, Pencil, Trash2, Boxes, Monitor, HardDrive } from 'lucide-react';
 
 const emptyForm = { target: 'pc' as AssetModel['target'], device_type: '', name: '', manufacturer: '', image: null as string | null, notes: '' };

@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, ServerType } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, Button } from '../components/FormControls';
+import { supabase, ServerType } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { Modal } from '../../../components/Modal';
+import { Field, TextInput, Button } from '../../../components/FormControls';
 import { Plus, Pencil, Trash2, Server as ServerIcon, Tags } from 'lucide-react';
 
 export function ServerTypesPage() {

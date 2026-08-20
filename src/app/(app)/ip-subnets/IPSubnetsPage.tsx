@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, IPSubnet } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, TextArea, Button } from '../components/FormControls';
-import { isValidIPPrefix, digitsAndDotsKeyDown } from '../lib/validation';
+import { supabase, IPSubnet } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { Modal } from '../../../components/Modal';
+import { Field, TextInput, TextArea, Button } from '../../../components/FormControls';
+import { isValidIPPrefix, digitsAndDotsKeyDown } from '../../../lib/validation';
 import { Plus, Pencil, Trash2, Network } from 'lucide-react';
 
 const emptyForm = { prefix: '', label: '', notes: '' };

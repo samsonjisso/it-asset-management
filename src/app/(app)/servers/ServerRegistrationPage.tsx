@@ -1,16 +1,16 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase, Server, ServerOwner, ServerType, ServerEnvironment, IPSubnet } from '../lib/supabase';
-import { matchSubnet } from '../lib/subnet';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { DataTable, Column } from '../components/DataTable';
-import { Modal } from '../components/Modal';
-import { DetailsModal, DetailSection } from '../components/DetailsModal';
-import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '../components/FormControls';
-import { isValidIPv4, isValidPort, IPV4_PATTERN } from '../lib/validation';
-import { ImageInput } from '../components/ImageInput';
-import { ZoomImage } from '../components/ZoomImage';
+import { supabase, Server, ServerOwner, ServerType, ServerEnvironment, IPSubnet } from '../../../lib/supabase';
+import { matchSubnet } from '../../../lib/subnet';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { DataTable, Column } from '../../../components/DataTable';
+import { Modal } from '../../../components/Modal';
+import { DetailsModal, DetailSection } from '../../../components/DetailsModal';
+import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '../../../components/FormControls';
+import { isValidIPv4, isValidPort, IPV4_PATTERN } from '../../../lib/validation';
+import { ImageInput } from '../../../components/ImageInput';
+import { ZoomImage } from '../../../components/ZoomImage';
 import { Plus, Pencil, Trash2, Eye, Server as ServerIcon, Download } from 'lucide-react';
 
 const emptyForm = {

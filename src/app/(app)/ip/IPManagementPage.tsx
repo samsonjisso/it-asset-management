@@ -1,14 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, IPAddress, Department } from '../lib/supabase';
-import { pingIp, PingResult } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { DataTable, Column } from '../components/DataTable';
-import { Modal } from '../components/Modal';
-import { DetailsModal, DetailSection } from '../components/DetailsModal';
-import { Field, TextInput, SelectInput, TextArea, Button } from '../components/FormControls';
+import { supabase, IPAddress, Department } from '../../../lib/supabase';
+import { pingIp, PingResult } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { DataTable, Column } from '../../../components/DataTable';
+import { Modal } from '../../../components/Modal';
+import { DetailsModal, DetailSection } from '../../../components/DetailsModal';
+import { Field, TextInput, SelectInput, TextArea, Button } from '../../../components/FormControls';
 import {
   Plus,
   Pencil,

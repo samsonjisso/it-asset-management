@@ -1,1 +1,4 @@
-import { IPSubnetsPage } from '../../../views/IPSubnetsPage'; export default function Page(){return <IPSubnetsPage/>;}
+import { IPSubnetsPage } from "./IPSubnetsPage";
+export default function Page() {
+  return <IPSubnetsPage />;
+}

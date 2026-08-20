@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Department } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, TextArea, Button } from '../components/FormControls';
+import { supabase, Department } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/Toast';
+import { Modal } from '@/components/Modal';
+import { Field, TextInput, TextArea, Button } from '@/components/FormControls';
 import { Plus, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
 
 export function DepartmentsPage() {

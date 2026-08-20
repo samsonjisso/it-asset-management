@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useToast } from '../components/Toast';
-import { GBBLogo } from '../components/GBBLogo';
-import { Button, SelectInput, TextInput } from '../components/FormControls';
+import { supabase } from '../../../lib/supabase';
+import { useToast } from '../../../components/Toast';
+import { GBBLogo } from '../../../components/GBBLogo';
+import { Button, SelectInput, TextInput } from '../../../components/FormControls';
 import { Printer, FileSpreadsheet, FileBarChart } from 'lucide-react';
 
 type ReportType = 'pc' | 'asset' | 'ip' | 'license' | 'device' | 'server' | 'all';

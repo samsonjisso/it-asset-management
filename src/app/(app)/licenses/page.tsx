@@ -1,4 +1,4 @@
-import { LicenseRegistrationPage } from "../../../views/LicenseRegistrationPage";
+import { LicenseRegistrationPage } from "./LicenseRegistrationPage";
 
 export default function Page() {
   return <LicenseRegistrationPage />;

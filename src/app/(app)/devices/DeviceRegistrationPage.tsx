@@ -1,15 +1,15 @@
 "use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { supabase, Device, DeviceType, AssetModel, DeviceOwner } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { DataTable, Column } from '../components/DataTable';
-import { Modal } from '../components/Modal';
-import { DetailsModal, DetailSection } from '../components/DetailsModal';
-import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '../components/FormControls';
-import { isValidIPv4, isValidMac, IPV4_PATTERN, MAC_PATTERN } from '../lib/validation';
-import { ImageInput } from '../components/ImageInput';
-import { ZoomImage } from '../components/ZoomImage';
+import { supabase, Device, DeviceType, AssetModel, DeviceOwner } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/Toast';
+import { DataTable, Column } from '@/components/DataTable';
+import { Modal } from '@/components/Modal';
+import { DetailsModal, DetailSection } from '@/components/DetailsModal';
+import { Field, TextInput, NumberInput, SelectInput, TextArea, Button } from '@/components/FormControls';
+import { isValidIPv4, isValidMac, IPV4_PATTERN, MAC_PATTERN } from '@/lib/validation';
+import { ImageInput } from '@/components/ImageInput';
+import { ZoomImage } from '@/components/ZoomImage';
 import { Plus, Eye, HardDrive, Download, Pencil, Trash2, Check, Settings2 } from 'lucide-react';
 import {
   STD_FIELD_META,
@@ -20,7 +20,7 @@ import {
   parseFieldLabels,
   parseExtraFields,
   getDeviceTypeIcon,
-} from '../lib/deviceTypeFields';
+} from '@/lib/deviceTypeFields';
 
 function parseExtraData(device?: Device | null): Record<string, string> {
   if (!device?.extra_data) return {};

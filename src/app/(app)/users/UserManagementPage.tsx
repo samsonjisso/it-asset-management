@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Profile, UserRole } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, SelectInput, Button } from '../components/FormControls';
+import { supabase, Profile, UserRole } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../components/Toast';
+import { Modal } from '../../../components/Modal';
+import { Field, TextInput, SelectInput, Button } from '../../../components/FormControls';
 import { Plus, Pencil, Users, UserCheck, UserX, Mail } from 'lucide-react';
 
 const roleOptions: { value: UserRole; label: string }[] = [

@@ -1,1 +1,4 @@
-import { DeviceTypesPage } from '../../../views/DeviceTypesPage'; export default function Page(){return <DeviceTypesPage/>;}
+import { DeviceTypesPage } from "./DeviceTypesPage";
+export default function Page() {
+  return <DeviceTypesPage />;
+}

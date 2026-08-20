@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { PCRegistrationPage } from "../../../views/PCRegistrationPage";
+import { PCRegistrationPage } from "./PCRegistrationPage";
 
 export default function Page() {
   const searchParams = useSearchParams();

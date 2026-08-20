@@ -1,4 +1,4 @@
-import { RemindersPage } from "../../../views/RemindersPage";
+import { RemindersPage } from "./RemindersPage";
 
 export default function Page() {
   return <RemindersPage />;

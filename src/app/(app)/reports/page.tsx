@@ -1,4 +1,4 @@
-import { ReportsPage } from "../../../views/ReportsPage";
+import { ReportsPage } from "./ReportsPage";
 
 export default function Page() {
   return <ReportsPage />;

@@ -1,4 +1,4 @@
-import { DepartmentsPage } from "../../../views/DepartmentsPage";
+import { DepartmentsPage } from "./DepartmentsPage";
 
 export default function Page() {
   return <DepartmentsPage />;
