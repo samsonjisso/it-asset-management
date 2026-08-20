@@ -1,10 +1,10 @@
 "use client";
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Field, TextInput, Button } from '../components/FormControls';
-import { GBBLogo } from '../components/GBBLogo';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
+import { Field, TextInput, Button } from '../../components/FormControls';
+import { GBBLogo } from '../../components/GBBLogo';
 import { KeyRound, Lock, ShieldCheck, LogOut } from 'lucide-react';
 
 // Shown instead of the app when the signed-in user's account has
