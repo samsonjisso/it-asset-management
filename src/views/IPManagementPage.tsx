@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase, IPAddress, Department } from '../lib/supabase';
 import { pingIp, PingResult } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +15,7 @@ import {
   Trash2,
   Eye,
   Network,
+  Building2,
   Download,
   Radar,
   Wifi,
@@ -50,7 +52,11 @@ const emptyForm = {
 
 const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
 
+const isIpAllocated = (record: IPAddress) =>
+  Boolean(record.related_assets?.pc || record.related_assets?.device || record.related_assets?.server);
+
 export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number } = {}) {
+  const router = useRouter();
   const { canWrite, hasRole, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<IPAddress[]>([]);
@@ -61,6 +67,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
   const [viewing, setViewing] = useState<IPAddress | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
 
   // IP availability checker (ping-based)
   const [checkModalOpen, setCheckModalOpen] = useState(false);
@@ -265,6 +272,29 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
     count: records.filter((r) => r.status === s.value).length,
   }));
 
+  const departmentCounts = useMemo(
+    () => [
+      { id: null, name: 'All Departments', count: records.length },
+      ...departments.map((department) => ({
+        id: department.id,
+        name: department.name,
+        count: records.filter((record) => record.department_id === department.id).length,
+      })),
+      {
+        id: 'unallocated',
+        name: 'Unallocated',
+        count: records.filter((record) => !isIpAllocated(record)).length,
+      },
+    ],
+    [departments, records]
+  );
+
+  const filteredRecords = useMemo(() => {
+    if (selectedDepartmentId === null) return records;
+    if (selectedDepartmentId === 'unallocated') return records.filter((record) => !isIpAllocated(record));
+    return records.filter((record) => record.department_id === selectedDepartmentId);
+  }, [records, selectedDepartmentId]);
+
   const viewSections: DetailSection[] = viewing ? [
     {
       title: 'IP Information',
@@ -339,6 +369,37 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
         ))}
       </div>
 
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Building2 size={17} className="text-brand-600" />
+          <h2 className="text-sm font-semibold text-gray-700">Filter by Department</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          {departmentCounts.map((department) => {
+            const selected = selectedDepartmentId === department.id;
+            return (
+              <button
+                key={department.id ?? 'all'}
+                type="button"
+                onClick={() => setSelectedDepartmentId(department.id)}
+                aria-pressed={selected}
+                className={`text-left rounded-2xl border p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${
+                  selected
+                    ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20'
+                    : 'border-gray-100 bg-white shadow-card hover:border-brand-200 hover:bg-brand-50/40'
+                }`}
+              >
+                <p className={`text-xs font-medium truncate ${selected ? 'text-brand-700' : 'text-gray-500'}`}>
+                  {department.name}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{department.count}</p>
+                <p className="text-xs text-gray-400">IP addresses</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-3 border-brand-600/30 border-t-brand-600 rounded-full animate-spin" />
@@ -346,11 +407,11 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
       ) : (
         <DataTable
           columns={columns}
-          data={records}
+          data={filteredRecords}
           searchKeys={['ip_address', 'hostname', 'ip_owner', 'mac_address', 'access_switch_port', 'patch_panel_label']}
           searchPlaceholder="Search by IP, hostname, owner, MAC..."
           dateFilterKey="created_at"
-          emptyMessage="No IP addresses registered yet"
+          emptyMessage={selectedDepartmentId ? 'No IP addresses match this department' : 'No IP addresses registered yet'}
           onRowClick={openView}
         />
       )}
@@ -374,6 +435,30 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
+          {!editing && (
+            <Field label="Registration Type" required hint="Choose the asset form to open">
+              <SelectInput
+                value="ip"
+                onChange={(e) => {
+                  const routes: Record<string, string> = {
+                    pc: '/pc?register=1',
+                    device: '/devices?register=1',
+                    server: '/servers?register=1',
+                  };
+                  const route = routes[e.target.value];
+                  if (route) {
+                    setModalOpen(false);
+                    router.push(route);
+                  }
+                }}
+              >
+                <option value="ip">IP Address</option>
+                <option value="pc">PC</option>
+                <option value="device">Device</option>
+                <option value="server">Server</option>
+              </SelectInput>
+            </Field>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="IP Address" required>
               <div className="flex gap-2">

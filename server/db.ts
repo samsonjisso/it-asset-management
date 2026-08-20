@@ -20,13 +20,18 @@ config({ path: envPath });
 // Verification log
 console.log('DB Host loaded:', process.env.DB_HOST);
 
-// Connection pool for MariaDB
-export const db = mysql.createPool({
+const dbName = process.env.DB_NAME || 'gbb_inventory';
+const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'gbb_inventory',
+};
+
+// Create the database before opening a pool that selects it by default.
+export const db = mysql.createPool({
+  ...dbConfig,
+  database: dbName,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -35,6 +40,14 @@ export const db = mysql.createPool({
 // Initialize database - create tables from schema
 async function initializeDatabase() {
   try {
+    const bootstrap = await mysql.createConnection(dbConfig);
+    try {
+      const escapedDbName = dbName.replace(/`/g, '``');
+      await bootstrap.execute(`CREATE DATABASE IF NOT EXISTS \`${escapedDbName}\``);
+    } finally {
+      await bootstrap.end();
+    }
+
     const connection = await db.getConnection();
     try {
       const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
@@ -91,6 +104,94 @@ async function initializeDatabase() {
       await ensureColumn('ip_addresses', 'vlan', 'VARCHAR(50)');
       await ensureColumn('ip_addresses', 'assigned_entity_type', 'VARCHAR(30)');
       await ensureColumn('ip_addresses', 'assigned_entity_id', 'VARCHAR(36)');
+
+      const ensureIpForeignKey = async (table: string, constraint: string) => {
+        const [rows] = await connection.execute(
+          `SELECT k.CONSTRAINT_NAME, r.DELETE_RULE
+           FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+           JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS r
+             ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+           WHERE k.TABLE_SCHEMA = DATABASE() AND k.TABLE_NAME = ?
+             AND k.COLUMN_NAME = 'ip_address_id' AND k.REFERENCED_TABLE_NAME = 'ip_addresses'`,
+          [table]
+        );
+        const existing = (rows as any[])[0];
+        if (existing && existing.DELETE_RULE !== 'SET NULL') {
+          await connection.execute(`ALTER TABLE ${table} DROP FOREIGN KEY \`${existing.CONSTRAINT_NAME}\``);
+        }
+        if (!existing || existing.DELETE_RULE !== 'SET NULL') {
+          await connection.execute(
+            `ALTER TABLE ${table} ADD CONSTRAINT \`${constraint}\` FOREIGN KEY (ip_address_id) REFERENCES ip_addresses(id) ON DELETE SET NULL`
+          );
+        }
+      };
+
+      await ensureIpForeignKey('pc_registrations', 'fk_pc_registrations_ip_address');
+      await ensureIpForeignKey('devices', 'fk_devices_ip_address');
+      await ensureIpForeignKey('servers', 'fk_servers_ip_address');
+
+      const ensureUniqueIndex = async (table: string, column: string, indexName: string) => {
+        const [rows] = await connection.execute(
+          `SELECT COUNT(*) AS c
+           FROM INFORMATION_SCHEMA.STATISTICS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+             AND COLUMN_NAME = ? AND NON_UNIQUE = 0`,
+          [table, column]
+        );
+        if (Number((rows as any[])[0]?.c || 0) === 0) {
+          await connection.execute(
+            `ALTER TABLE ${table} ADD UNIQUE KEY \`${indexName}\` (\`${column}\`)`
+          );
+        }
+      };
+
+      await ensureUniqueIndex('ip_addresses', 'hostname', 'uq_ip_addresses_hostname');
+      await ensureUniqueIndex('pc_registrations', 'hostname', 'uq_pc_registrations_hostname');
+      await ensureUniqueIndex('devices', 'hostname', 'uq_devices_hostname');
+      await ensureUniqueIndex('servers', 'hostname', 'uq_servers_hostname');
+
+      await connection.execute('DROP TRIGGER IF EXISTS trg_ip_addresses_after_update');
+      await connection.execute(`
+        CREATE TRIGGER trg_ip_addresses_after_update
+        AFTER UPDATE ON ip_addresses
+        FOR EACH ROW
+        BEGIN
+          UPDATE pc_registrations
+          SET ip_address = NEW.ip_address,
+              hostname = COALESCE(NEW.hostname, hostname)
+          WHERE ip_address_id = NEW.id;
+
+          UPDATE devices
+          SET ip_address = NEW.ip_address,
+              hostname = COALESCE(NEW.hostname, hostname)
+          WHERE ip_address_id = NEW.id;
+
+          UPDATE servers
+          SET ip_address = NEW.ip_address,
+              hostname = COALESCE(NEW.hostname, hostname)
+          WHERE ip_address_id = NEW.id;
+        END
+      `);
+
+      await connection.execute('DROP TRIGGER IF EXISTS trg_ip_addresses_before_delete');
+      await connection.execute(`
+        CREATE TRIGGER trg_ip_addresses_before_delete
+        BEFORE DELETE ON ip_addresses
+        FOR EACH ROW
+        BEGIN
+          UPDATE pc_registrations
+          SET ip_address = NULL, ip_address_id = NULL
+          WHERE ip_address_id = OLD.id;
+
+          UPDATE devices
+          SET ip_address = NULL, ip_address_id = NULL
+          WHERE ip_address_id = OLD.id;
+
+          UPDATE servers
+          SET ip_address = NULL, ip_address_id = NULL
+          WHERE ip_address_id = OLD.id;
+        END
+      `);
 
       console.log('Database schema initialized and backward-compatible migrations applied');
     } finally {

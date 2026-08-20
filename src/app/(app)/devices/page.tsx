@@ -1,5 +1,10 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
 import { DeviceRegistrationPage } from "../../../views/DeviceRegistrationPage";
 
 export default function Page() {
-  return <DeviceRegistrationPage />;
+  const searchParams = useSearchParams();
+  const register = searchParams.get('register');
+  return <DeviceRegistrationPage autoOpenCreate={register ? Number(register) : undefined} />;
 }
