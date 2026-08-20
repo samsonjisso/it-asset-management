@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, DeviceType, DeviceTypeField } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { TextInput, SelectInput, Button } from '../components/FormControls';
+import { supabase, DeviceType, DeviceTypeField } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/Toast';
+import { Modal } from '@/components/Modal';
+import { TextInput, SelectInput, Button } from '@/components/FormControls';
 import { Plus, Pencil, Trash2, Check, HardDrive } from 'lucide-react';
 import {
   ICON_OPTIONS,
@@ -18,7 +18,7 @@ import {
   parseFieldLabels,
   parseExtraFields,
   getDeviceTypeIcon,
-} from '../lib/deviceTypeFields';
+} from '@/lib/deviceTypeFields';
 
 // Device Type Management (Customization): the set of device types
 // offered on the Device Registration form, and every field each one
