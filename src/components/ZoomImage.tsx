@@ -42,7 +42,7 @@ export function ZoomImage({ src, alt = '', size = 128, previewSize = 360, classN
       className={`relative shrink-0 rounded-lg border border-gray-200 overflow-hidden cursor-zoom-in bg-gray-50 group ${className}`}
       style={{ width: size, height: size }}
     >
-      <img src={src} alt={alt} className="w-full h-full object-cover" />
+      <img src={src} alt={alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
         <div className="bg-black/60 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <ZoomIn size={16} />

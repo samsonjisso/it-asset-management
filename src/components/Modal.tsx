@@ -23,8 +23,8 @@ export function Modal({ open, onClose, title, subtitle, children, size = 'md' }:
   }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm gbb-fade-in">
-      <div className={`bg-white rounded-xl shadow-2xl w-full ${sizeClass} max-h-[90vh] flex flex-col`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 gbb-fade-in">
+      <div className={`bg-white dark:bg-[#1b1b29] rounded-xl shadow-2xl w-full ${sizeClass} max-h-[90vh] flex flex-col`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-[#343494] rounded-t-xl">
           <div>
             <h2 className="text-lg font-semibold text-white">{title}</h2>
@@ -32,7 +32,8 @@ export function Modal({ open, onClose, title, subtitle, children, size = 'md' }:
           </div>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition-colors"
+            className="gbb-icon-button min-h-0 min-w-0 text-white/80 hover:bg-white/10 hover:text-white"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>

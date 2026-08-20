@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, PCRegistration, Department, AssetModel } from '../lib/supabase';
-import { fetchComputerInfo } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { DataTable, Column } from '../components/DataTable';
@@ -11,7 +10,7 @@ import { Field, TextInput, SelectInput, TextArea, Button } from '../components/F
 import { isValidIPv4, isValidMac, IPV4_PATTERN, MAC_PATTERN } from '../lib/validation';
 import { ImageInput } from '../components/ImageInput';
 import { ZoomImage } from '../components/ZoomImage';
-import { Plus, Pencil, Trash2, Eye, Monitor, Download, Wifi } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, Monitor, Download } from 'lucide-react';
 
 const emptyForm = {
   hostname: '',
@@ -50,7 +49,6 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   const [saving, setSaving] = useState(false);
   const [skipAssetTag, setSkipAssetTag] = useState(false);
   const [skipFloor, setSkipFloor] = useState(false);
-  const [fetchingInfo, setFetchingInfo] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -174,24 +172,6 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     }
   };
 
-  const handleFetchInfo = async () => {
-    setFetchingInfo(true);
-    const { data, error } = await fetchComputerInfo();
-    setFetchingInfo(false);
-    if (error || !data) {
-      toast(error?.message || 'Could not fetch computer information', 'error');
-      return;
-    }
-    setForm((f) => ({
-      ...f,
-      hostname: data.hostname || f.hostname,
-      ip_address: data.ip || f.ip_address,
-      mac_address: data.mac_address || f.mac_address,
-      owner_name: data.owner_name || f.owner_name,
-    }));
-    toast(data.notes, data.hostname && data.mac_address ? 'success' : 'info');
-  };
-
   const exportCSV = () => {
     const headers = ['Asset ID', 'Hostname', 'Monitor Serial', 'Asset Tag', 'Service Tag', 'MAC Address', 'CPU', 'Memory Detail', 'Generation Detail', 'IP Address', 'Owner', 'Department', 'Floor', 'Switch Port', 'Access Switch', 'Patch Level', 'Created At'];
     const rows = records.map((r) => [
@@ -213,7 +193,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     { key: 'asset_id', label: 'Key', sortable: true, sortValue: (r) => r.asset_id ?? '', render: (r) => r.asset_id ? <span className="font-mono text-xs font-semibold text-brand-700">{r.asset_id}</span> : <span className="text-gray-400 italic">-</span> },
     { key: 'hostname', label: 'Name', sortable: true, sortValue: (r) => r.hostname, render: (r) => (
       <div className="flex items-center gap-2">
-        {r.image && <img src={r.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
+        {r.image && <img src={r.image} alt="" loading="lazy" decoding="async" className="w-6 h-6 rounded object-cover shrink-0" />}
         <span className="font-medium text-gray-900">{r.hostname}</span>
       </div>
     )},
@@ -355,16 +335,6 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
               <span className="font-mono text-sm font-semibold text-brand-700">{editing.asset_id}</span>
             </div>
           )}
-          <div className="flex items-start justify-between gap-3 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-gray-600">
-              Fetches this PC's hostname, IP, MAC address, and owner (from your login) from the
-              network and this system. Run this from the PC being registered. Hardware fields
-              (asset tag, service tag, product key) still need to be checked on the device itself.
-            </p>
-            <Button type="button" variant="outline" size="sm" onClick={handleFetchInfo} loading={fetchingInfo} className="shrink-0">
-              {!fetchingInfo && <Wifi size={16} />} Fetch Computer Information
-            </Button>
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="PC Hostname" required>
               <TextInput value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} placeholder="e.g., PC-HQ-001" required />

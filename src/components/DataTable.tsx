@@ -142,7 +142,7 @@ export function DataTable<T extends { id: string }>({
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-[#1b1b29] rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="gbb-table">
             <thead>
@@ -152,7 +152,7 @@ export function DataTable<T extends { id: string }>({
                     {col.sortable ? (
                       <button
                         onClick={() => handleSort(col.key)}
-                        className="flex items-center gap-1 hover:text-[#ffc800] transition-colors"
+                        className="flex min-h-0 items-center gap-1 rounded-md px-1 py-0.5 hover:text-[#ffc800] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffc800]"
                       >
                         {col.label}
                         {sortKey === col.key ? (
@@ -200,7 +200,7 @@ export function DataTable<T extends { id: string }>({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50 dark:bg-[#161621]">
             <p className="text-xs text-gray-600">
               Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of{' '}
               {filtered.length}
@@ -209,7 +209,8 @@ export function DataTable<T extends { id: string }>({
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="gbb-icon-button min-h-0 min-w-0 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:hover:bg-white/10"
+                aria-label="Previous page"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -219,7 +220,8 @@ export function DataTable<T extends { id: string }>({
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="gbb-icon-button min-h-0 min-w-0 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:hover:bg-white/10"
+                aria-label="Next page"
               >
                 <ChevronRight size={18} />
               </button>
