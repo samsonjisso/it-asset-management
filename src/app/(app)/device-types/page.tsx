@@ -1,4 +1,6 @@
-import { DeviceTypesPage } from "./DeviceTypesPage";
+import DeviceTypesPage from "./DeviceTypesPage";
+
+
 export default function Page() {
   return <DeviceTypesPage />;
 }

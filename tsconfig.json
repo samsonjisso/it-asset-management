@@ -34,7 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-, "src/app/(app)/devices/.DeviceRegistrationPage.tsx", "src/app/(app)/devices/.page.tsx"  ],
+, "src/app/(app)/devices/.DeviceRegistrationPage.tsx", "src/app/(app)/devices/.page.tsx", "src/app/(app)/device-types/.DeviceTypesPage.tsx", "src/app/(app)/device-types/.page.tsx"  ],
   "exclude": [
     "node_modules",
     "server"

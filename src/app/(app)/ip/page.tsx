@@ -1,5 +1,4 @@
-import { IPManagementPage } from "./IPManagementPage";
+import { IPManagementPage } from './components/IPManagementPage';
 
-export default function Page() {
-  return <IPManagementPage />;
-}
+export { IPManagementPage };
+export default IPManagementPage;
