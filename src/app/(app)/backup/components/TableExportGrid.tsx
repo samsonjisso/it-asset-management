@@ -1,27 +1,38 @@
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/FormControls';
 import { BACKUP_TABLES } from '../constants';
+import { useBackupExport } from '../hooks/useBackupExport';
 
-interface TableExportGridProps {
-  onExportTable: (tableName: string, label: string) => void;
-}
+export function TableExportGrid() {
+  const { exportingTable, exportTableCSV } = useBackupExport();
 
-export function TableExportGrid({ onExportTable }: TableExportGridProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-[#343494] mb-4">Export Individual Tables</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h3 className="mb-4 text-lg font-semibold text-[#343494]">
+        Export Individual Tables
+      </h3>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {BACKUP_TABLES.map((table) => (
           <div
             key={table.name}
-            className="flex items-center justify-between bg-gray-50 rounded-lg p-4 border border-gray-200"
+            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4"
           >
             <div className="flex items-center gap-3">
               <FileSpreadsheet size={20} className="text-[#343494]" />
-              <span className="font-medium text-gray-700 text-sm">{table.label}</span>
+              <span className="text-sm font-medium text-gray-700">
+                {table.label}
+              </span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => onExportTable(table.name, table.label)}>
-              <Download size={14} /> Export
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportTableCSV(table.name, table.label)}
+              disabled={exportingTable !== null}
+            >
+              <Download size={14} />
+              {exportingTable === table.name ? 'Exporting...' : 'Export'}
             </Button>
           </div>
         ))}

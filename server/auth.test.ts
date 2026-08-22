@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { requireRole } from './auth.js';
+import { requireRole } from './utils/auth.js';
 
 const schemaSql = fs.readFileSync(path.join(process.cwd(), 'server/schema.sql'), 'utf8');
 
