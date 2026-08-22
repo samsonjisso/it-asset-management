@@ -36,7 +36,7 @@ export function IPManagementPage({ autoOpenCreate }: IPManagementProps = {}) {
   const [selectedDepartmentId, setSelectedDepartmentId] =
     useState<DepartmentFilterId>(null);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
-  const lastAutoOpen = useRef<number | undefined>();
+  const lastAutoOpen = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (
