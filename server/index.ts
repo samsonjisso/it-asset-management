@@ -1,162 +1,25 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 dotenv.config();
 
-import './db.js'; // ensures schema + seed run before routes are registered
-import authRoutes from './routes/auth.js';
-import profilesRoutes from './routes/profiles.js';
-import ipCheckRoutes from './routes/ip-check.js';
-import { createCrudRouter } from './crud.js';
-import { WRITE_ROLES, MANAGE_ROLES } from './auth.js';
-import { startReminderScheduler } from './scheduler.js';
-import { sanitizeBody, sanitizeQuery, validateGenericRequest } from './middleware/common.js';
-import { validatePcRegistration } from './middleware/pcValidation.js';
-import { validateLicense } from './middleware/licenseValidation.js';
-import { validateDevice } from './middleware/deviceValidation.js';
-import { validateReminder } from './middleware/reminderValidation.js';
-import { validateAsset } from './middleware/assetValidation.js';
-import { validateIpAddress } from './middleware/ipAddressValidation.js';
-import { validateServer } from './middleware/serverValidation.js';
-import { validateDepartment } from './middleware/departmentValidation.js';
-import { syncIpForEntity, clearAndSyncIpForUpdate } from './ipSync.js';
+import "./utils/db.js"; // ensures schema + seed run before routes are registered
+import { createApp } from "./app.js";
+import { startReminderScheduler } from "./utils/scheduler.js";
 
 const PORT = process.env.PORT || 4000;
 
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(sanitizeBody);
-app.use(sanitizeQuery);
-app.use(validateGenericRequest);
-
-app.use('/api/auth', authRoutes);
-app.use('/api/profiles', profilesRoutes);
-app.use('/api/ip', ipCheckRoutes);
-
-app.use('/api/departments', validateDepartment);
-app.use(
-  '/api/departments',
-  createCrudRouter('departments', {
-    insertRoles: ['admin', 'manager'],
-    updateRoles: ['admin', 'manager'],
-    deleteRoles: ['admin'],
-  })
-);
-
-app.use('/api/pc_registrations', validatePcRegistration);
-app.use(
-  '/api/pc_registrations',
-  createCrudRouter('pc_registrations', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    withDepartment: true,
-    autoAssetId: true,
-    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'pc_registrations', id, body),
-    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'pc_registrations', id, body),
-  })
-);
-
-app.use('/api/licenses', validateLicense);
-app.use(
-  '/api/licenses',
-  createCrudRouter('licenses', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    autoAssetId: true,
-  })
-);
-
-app.use('/api/devices', validateDevice);
-app.use(
-  '/api/devices',
-  createCrudRouter('devices', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    autoAssetId: true,
-    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'devices', id, body),
-    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'devices', id, body),
-  })
-);
-
-app.use('/api/servers', validateServer);
-app.use(
-  '/api/servers',
-  createCrudRouter('servers', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    autoAssetId: true,
-    afterInsert: (connection, id, body) => syncIpForEntity(connection, 'servers', id, body),
-    afterUpdate: (connection, id, body) => clearAndSyncIpForUpdate(connection, 'servers', id, body),
-  })
-);
-
-app.use('/api/reminders', validateReminder);
-app.use(
-  '/api/reminders',
-  createCrudRouter('reminders', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: ['admin', 'manager', 'register_user', 'assessor'],
-    deleteRoles: MANAGE_ROLES,
-  })
-);
-
-app.use('/api/assets', validateAsset);
-app.use(
-  '/api/assets',
-  createCrudRouter('assets', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    withDepartment: true,
-    autoAssetId: true,
-  })
-);
-
-app.use('/api/ip_addresses', validateIpAddress);
-app.use(
-  '/api/ip_addresses',
-  createCrudRouter('ip_addresses', {
-    insertRoles: WRITE_ROLES,
-    updateRoles: WRITE_ROLES,
-    deleteRoles: MANAGE_ROLES,
-    withDepartment: true,
-    withIpRelations: true,
-  })
-);
-
-
-// Customization/configuration CRUD. These tables are intentionally kept generic
-// so administrators can manage the values used by registration forms without
-// requiring a schema change for every new option.
-const CONFIG_TABLES = [
-  'license_types', 'license_subtypes', 'device_types', 'device_owners',
-  'server_owners', 'server_types', 'server_environments', 'ip_subnets',
-  'asset_models', 'reminder_types',
-] as const;
-for (const table of CONFIG_TABLES) {
-  app.use(`/api/${table}`, createCrudRouter(table, {
-    insertRoles: ['admin', 'manager'],
-    updateRoles: ['admin', 'manager'],
-    deleteRoles: ['admin'],
-  }));
-}
-
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-
-// The frontend is now a separate Next.js app (see ../src/app). Next
-// proxies /api/* requests to this server via rewrites in next.config.js,
-// so this process only ever needs to serve the API.
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
+const app = createApp();
 
 app.listen(PORT, () => {
   console.log(`GBB Asset Inventory API listening on http://localhost:${PORT}`);
   startReminderScheduler();
 });
+
+// Barrel export: the original index.ts was a flat file that other modules
+// could (in principle) import pieces from directly. Re-exporting the app
+// factory, the CRUD router factory and the shared types here keeps that
+// possible now that the implementation lives in separate files.
+export { app };
+export { createApp } from "./app.js";
+export { createCrudRouter } from "./routes/crud.routes.js";
+export * from "./types.js";
