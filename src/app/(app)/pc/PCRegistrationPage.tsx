@@ -98,7 +98,7 @@ export function PCRegistrationPage({
     onEdit: openEdit,
     onDelete: handleDelete,
   });
-  const lastAutoOpen = useRef<number>();
+  const lastAutoOpen = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (

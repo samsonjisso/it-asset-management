@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
-import { Field, TextInput, TextArea, Button } from "@/components/FormControls";
+import {
+  Field,
+  TextInput,
+  TextArea,
+  Button,
+} from "@/components/FormControls";
 import type { Department } from "@/lib/supabase";
 import type { DepartmentForm } from "../types";
 
@@ -10,7 +15,10 @@ type Props = {
   saving: boolean;
   onClose: () => void;
   onCreate: (form: DepartmentForm) => Promise<void>;
-  onUpdate: (id: number, form: DepartmentForm) => Promise<void>;
+  onUpdate: (
+    id: Department["id"],
+    form: DepartmentForm,
+  ) => Promise<void>;
 };
 
 const emptyForm: DepartmentForm = {
@@ -41,11 +49,14 @@ export function DepartmentFormModal({
     );
   }, [editing, open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLElement>) => {
     e.preventDefault();
 
-    if (editing) await onUpdate(editing.id, form);
-    else await onCreate(form);
+    if (editing) {
+      await onUpdate(editing.id, form);
+    } else {
+      await onCreate(form);
+    }
   };
 
   return (
@@ -59,7 +70,9 @@ export function DepartmentFormModal({
         <Field label="Name" required>
           <TextInput
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, name: e.target.value })
+            }
             placeholder="e.g., IT Department, Hawassa Branch"
             required
           />
@@ -71,10 +84,14 @@ export function DepartmentFormModal({
             id="is_branch"
             checked={form.is_branch}
             onChange={(e) =>
-              setForm({ ...form, is_branch: e.target.checked })
+              setForm({
+                ...form,
+                is_branch: e.target.checked,
+              })
             }
             className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-600"
           />
+
           <label
             htmlFor="is_branch"
             className="text-sm font-medium text-gray-700"
@@ -87,7 +104,10 @@ export function DepartmentFormModal({
           <TextArea
             value={form.description}
             onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
+              setForm({
+                ...form,
+                description: e.target.value,
+              })
             }
             rows={2}
             placeholder="Optional description"
@@ -95,11 +115,24 @@ export function DepartmentFormModal({
         </Field>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
             Cancel
           </Button>
-          <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? "Saving..." : editing ? "Update" : "Create"}
+
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={saving}
+          >
+            {saving
+              ? "Saving..."
+              : editing
+                ? "Update"
+                : "Create"}
           </Button>
         </div>
       </form>

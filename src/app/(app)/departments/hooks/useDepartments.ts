@@ -48,7 +48,7 @@ export function useDepartments() {
     return true;
   };
 
-  const updateDepartment = async (id: number, form: DepartmentForm) => {
+  const updateDepartment = async (id: string, form: DepartmentForm) => {
     if (!form.name) {
       toast("Department name is required", "error");
       return false;
