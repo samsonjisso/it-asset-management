@@ -606,11 +606,6 @@ const PC_DUPLICATE_FIELDS: [string, string][] = [
   ['asset_tag', 'Asset Tag'],
   ['hostname', 'Hostname'],
 ];
-const PC_REQUIRED_IDENTIFIER_FIELDS: [string, string][] = [
-  ['mac_address', 'MAC Address'],
-  ['service_tag', 'Service Tag / Serial Number'],
-  ['asset_tag', 'Asset Tag'],
-];
 const DEVICE_DUPLICATE_FIELDS: [string, string][] = [
   ['mac_address', 'MAC Address'],
   ['serial_number', 'Service Tag / Serial Number'],
@@ -627,50 +622,6 @@ async function checkPcDuplicate(body: Row, conn: PoolConnection, currentId: stri
   if (match) throw duplicateAssetError(match, 'PC');
 }
 
-function parseJsonArray(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== 'string') return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function validatePcRequiredFields(body: Row, conn: PoolConnection, isInsert: boolean): Promise<void> {
-  if (isInsert && !String(body.hostname ?? '').trim()) throw new ApiError(400, 'PC Hostname is required');
-
-  const identifierProvided = PC_REQUIRED_IDENTIFIER_FIELDS.some(([field]) => {
-    const value = String(body[field] ?? '').trim();
-    return !!value && (field !== 'asset_tag' || value.toLowerCase() !== 'n/a');
-  });
-  if (isInsert && !identifierProvided) {
-    throw new ApiError(400, 'At least one of MAC Address, Service Tag / Serial Number, or Asset Tag is required');
-  }
-
-  const [configRows] = await conn.query<any[]>('SELECT required_base_fields, fields FROM pc_form_fields ORDER BY created_at LIMIT 1');
-  const config = configRows[0];
-  const requiredBaseFields = parseJsonArray(config?.required_base_fields).filter((field): field is string => typeof field === 'string');
-  for (const field of requiredBaseFields) {
-    if (field === 'asset_tag') continue;
-    if (!isInsert && !(field in body)) continue;
-    if (field === 'license_id' && !String(body.license_id ?? '').trim() && !String(body.product_key ?? '').trim()) {
-      throw new ApiError(400, 'Product Key / License is required');
-    }
-    if (field !== 'license_id' && !String(body[field] ?? '').trim()) throw new ApiError(400, `${field} is required`);
-  }
-
-  const requiredExtraFields = parseJsonArray(config?.fields).filter(
-    (field): field is { key: string; label?: string; required?: boolean } =>
-      !!field && typeof field === 'object' && typeof (field as any).key === 'string' && (field as any).required === true
-  );
-  if (!isInsert && !('extra_data' in body)) return;
-  const extraData = body.extra_data && typeof body.extra_data === 'object' ? body.extra_data as Record<string, unknown> : {};
-  for (const field of requiredExtraFields) {
-    if (!String(extraData[field.key] ?? '').trim()) throw new ApiError(400, `${field.label || field.key} is required`);
-  }
-}
 async function checkDeviceDuplicate(body: Row, conn: PoolConnection, currentId: string | null) {
   const match = await findDuplicateAsset(conn, 'devices', DEVICE_DUPLICATE_FIELDS, body, currentId, 'hostname');
   if (match) throw duplicateAssetError(match, 'device');
@@ -848,13 +799,11 @@ export const pcRegistrationsConfig: CrudTableConfig = {
   withDepartment: true,
   autoAssetId: true,
   beforeInsert: async (body, { conn }) => {
-    await validatePcRequiredFields(body, conn, true);
     await checkPcDuplicate(body, conn, null);
     await validatePcLicense(body, conn, null);
     await checkAndLinkIp('pc_registrations', body, conn, null);
   },
   beforeUpdate: async (body, { conn }, id) => {
-    await validatePcRequiredFields(body, conn, false);
     await checkPcDuplicate(body, conn, id);
     await validatePcLicense(body, conn, id);
     await checkAndLinkIp('pc_registrations', body, conn, id);

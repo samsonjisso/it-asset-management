@@ -8,7 +8,7 @@ import { z } from 'zod';
 // schema can't safely express "required unless this other admin-
 // configured field says otherwise" without duplicating that logic.
 export const pcRegistrationSchema = z.looseObject({
-  hostname: z.string().trim().min(1, 'PC Hostname is required').max(255),
+  hostname: z.string().trim().min(1).max(255).optional(),
   monitor_serial: z.string().max(255).nullable().optional(),
   asset_tag: z.string().max(255).nullable().optional(),
   service_tag: z.string().max(255).nullable().optional(),
