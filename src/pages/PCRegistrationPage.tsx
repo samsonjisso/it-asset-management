@@ -880,7 +880,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
                   <Field
                     key={f.key}
                     label={f.label}
-                    required
+                    required={f.required}
                     error={fieldErrors[f.key]}
                     className={f.type === 'multiselect' || f.type === 'radio' || f.type === 'long_text' ? 'sm:col-span-2' : undefined}
                   >
