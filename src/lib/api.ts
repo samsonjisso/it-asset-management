@@ -1,14 +1,34 @@
-"use client";
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || '/api';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL as string | undefined) || '/api';
 const TOKEN_KEY = 'gbb_token';
 
+// Fired whenever the server rejects a request as unauthenticated/expired
+// (401), so AuthContext can immediately drop the session and show the
+// login screen — the user must be required to authenticate again the
+// moment the session is no longer valid, not just on their next click.
+export const UNAUTHORIZED_EVENT = 'gbb:unauthorized';
+
+// Session Security: don't remember a signed-in user for longer than
+// necessary. By default the token lives in sessionStorage, so simply
+// closing the browser/tab ends the session immediately — nothing is
+// left behind for the next person to walk up to that machine and
+// resume. Only when the person explicitly checks "Keep me signed in"
+// on the login screen do we persist it to localStorage instead, and
+// even then the server's own token expiry (see JWT_EXPIRES_IN in
+// server/auth.js) caps how long that can ever be honored.
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+export function setToken(token: string | null, persist = false) {
+  if (typeof window === 'undefined') return;
+  // Always clear both first so switching "remember me" on/off between
+  // logins (or logging out) never leaves a stale copy in the other
+  // storage for getToken() to pick up.
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  if (!token) return;
+  (persist ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
 }
 
 export interface ApiResult<T> {
@@ -40,9 +60,13 @@ async function request<T = any>(method: string, path: string, body?: unknown): P
   }
 
   if (!res.ok) {
-    if (res.status === 401 && path !== '/auth/login' && typeof window !== 'undefined') {
-      sessionStorage.setItem('gbb_return_path', window.location.pathname + window.location.search);
-      window.dispatchEvent(new Event('gbb:session-expired'));
+    // A 401 here means the token this tab is holding is no longer
+    // valid — expired, revoked, or the account was logged out/disabled
+    // elsewhere. Only a genuinely authenticated request should trigger
+    // this (i.e. we actually sent a token), so a 401 on an anonymous
+    // login attempt doesn't loop back into a sign-out.
+    if (res.status === 401 && token && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
     return { data: null, error: { message: json?.error || res.statusText || 'Request failed' } };
   }
@@ -66,5 +90,31 @@ export interface PingResult {
 
 export function pingIp(ip: string) {
   return request<PingResult>('POST', '/network/ping', { ip });
+}
+
+export interface DirectoryUserResult {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+// Minimal active-user list for populating "Employee/User Selection"
+// custom fields — see GET /profiles/directory on the server.
+export function fetchProfileDirectory() {
+  return request<DirectoryUserResult[]>('GET', '/profiles/directory');
+}
+
+// Admin Change Notifications: marks every unread notification as read
+// in one call, rather than one PATCH per row.
+export function markAllNotificationsRead() {
+  return request<{ ok: boolean }>('POST', '/notifications/mark_all_read');
+}
+
+// Transfer Ownership: reassigns the owner flag (see is_owner in
+// server/schema.sql) from the caller to another admin. Only the
+// current owner can call this, and it re-confirms their password
+// server-side — see POST /profiles/:id/transfer-ownership.
+export function transferOwnership(newOwnerId: string, password: string) {
+  return request('POST', `/profiles/${newOwnerId}/transfer-ownership`, { password });
 }
 

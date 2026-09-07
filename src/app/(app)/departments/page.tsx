@@ -1,5 +1,10 @@
-import { DepartmentsPage } from "./DepartmentsPage";
+'use client';
+
+import { DepartmentsPage } from '@/pages/DepartmentsPage';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
-  return <DepartmentsPage />;
+  return <RouteGuard module="departments" adminOnly>
+      <DepartmentsPage />
+    </RouteGuard>;
 }

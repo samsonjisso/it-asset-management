@@ -1,12 +1,6 @@
-node_modules
-.next
-out
-dist
+node_modules/
+.next/
+out/
 .env
-.env.local
-server/.env
-server/data/*.db
-server/data/*.db-*
-*.log
-.DS_Store
-.vscode
+*.local
+npm-debug.log*

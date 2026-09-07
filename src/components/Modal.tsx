@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { ReactNode } from 'react';
 import { X } from 'lucide-react';
@@ -23,17 +23,20 @@ export function Modal({ open, onClose, title, subtitle, children, size = 'md' }:
   }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 gbb-fade-in">
-      <div className={`bg-white dark:bg-[#1b1b29] rounded-xl shadow-2xl w-full ${sizeClass} max-h-[90vh] flex flex-col`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-[#343494] rounded-t-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 gbb-fade-in"
+    >
+      <div
+        className={`bg-white dark:bg-gray-900 rounded shadow-2xl ring-1 ring-black/5 border-2 border-brand-600 w-full ${sizeClass} max-h-[90vh] flex flex-col gbb-pop-in`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
-            {subtitle && <p className="text-sm text-white/70">{subtitle}</p>}
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{title}</h2>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="gbb-icon-button min-h-0 min-w-0 text-white/80 hover:bg-white/10 hover:text-white"
-            aria-label="Close dialog"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1.5 transition-colors"
           >
             <X size={20} />
           </button>

@@ -1,6 +1,10 @@
-import { ReportsPage } from "./ReportsPage";
+'use client';
 
+import { ReportsPage } from '@/pages/ReportsPage';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
-  return <ReportsPage />;
+  return <RouteGuard module="reports">
+      <ReportsPage />
+    </RouteGuard>;
 }

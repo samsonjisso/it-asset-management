@@ -1,6 +1,8 @@
+'use client';
+
 import { ReactNode } from 'react';
 import { Modal } from './Modal';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from './FormControls';
 
 export interface DetailField {
@@ -24,6 +26,8 @@ interface DetailsModalProps {
   sections: DetailSection[];
   onEdit?: () => void;
   editLabel?: string;
+  onDelete?: () => void;
+  deleteLabel?: string;
 }
 
 function isEmpty(value: ReactNode) {
@@ -39,6 +43,8 @@ export function DetailsModal({
   sections,
   onEdit,
   editLabel = 'Edit Record',
+  onDelete,
+  deleteLabel = 'Delete',
 }: DetailsModalProps) {
   return (
     <Modal open={open} onClose={onClose} title={title} subtitle={subtitle} size="lg">
@@ -51,29 +57,38 @@ export function DetailsModal({
         {sections.map((section, i) => (
           <div key={i} className="space-y-3">
             {section.title && (
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-600 border-b border-gray-100 pb-1.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-600 border-b border-gray-100 dark:border-gray-800 pb-1.5">
                 {section.title}
               </h3>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               {section.fields.map((f, j) => (
                 <div key={j} className={f.full ? 'sm:col-span-2' : ''}>
-                  <p className="text-xs font-medium text-gray-400 mb-0.5">{f.label}</p>
-                  <p className={`text-sm text-gray-800 break-words ${f.mono ? 'font-mono' : ''}`}>
-                    {isEmpty(f.value) ? <span className="text-gray-300 italic">Not set</span> : f.value}
+                  <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">{f.label}</p>
+                  <p className={`text-sm text-gray-800 dark:text-gray-100 break-words ${f.mono ? 'font-mono' : ''}`}>
+                    {isEmpty(f.value) ? <span className="text-gray-300 dark:text-gray-600 italic">Not set</span> : f.value}
                   </p>
                 </div>
               ))}
             </div>
           </div>
         ))}
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
-          {onEdit && (
-            <Button type="button" variant="primary" onClick={onEdit}>
-              <Pencil size={16} /> {editLabel}
-            </Button>
-          )}
+        <div className="flex justify-between items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div>
+            {onDelete && (
+              <Button type="button" variant="danger" onClick={onDelete}>
+                <Trash2 size={16} /> {deleteLabel}
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
+            {onEdit && (
+              <Button type="button" variant="primary" onClick={onEdit}>
+                <Pencil size={16} /> {editLabel}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </Modal>

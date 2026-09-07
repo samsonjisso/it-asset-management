@@ -1,14 +1,16 @@
-"use client";
+'use client';
 
-import { useSearchParams } from "next/navigation";
-import { ServerRegistrationPage } from "./ServerRegistrationPage";
+import { useSearchParams } from 'next/navigation';
+import { ServerRegistrationPage } from '@/pages/ServerRegistrationPage';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const register = searchParams.get("register");
+  const createParam = searchParams.get('create');
+  const autoOpenCreate = createParam ? Number(createParam) : undefined;
   return (
-    <ServerRegistrationPage
-      autoOpenCreate={register ? Number(register) : undefined}
-    />
+    <RouteGuard module="servers">
+      <ServerRegistrationPage autoOpenCreate={autoOpenCreate} />
+    </RouteGuard>
   );
 }

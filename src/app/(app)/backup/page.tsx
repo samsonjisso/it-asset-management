@@ -1,7 +1,10 @@
-"use client";
+'use client';
 
-import { BackupPage } from "./BackupPage";
+import { BackupPage } from '@/pages/BackupPage';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
-  return <BackupPage />;
+  return <RouteGuard module="backup">
+      <BackupPage />
+    </RouteGuard>;
 }
