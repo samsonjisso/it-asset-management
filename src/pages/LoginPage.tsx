@@ -20,7 +20,7 @@ const REMEMBER_KEY = 'gbb_remembered_email';
 // template) instead of the old split welcome-panel shell — one card,
 // on a brand-colored gradient backdrop, with the GBB logo on top.
 // Kept from the system's original login page: work-email + password
-// validation, the show/hide password toggle, "keep me signed in", and
+// validation, the show/hide password toggle, "remember my email", and
 // routing "Forgot password?" to the IT-administrator contact flow
 // rather than a self-service reset. Dropped: the sign-up link — there
 // is no self-registration, accounts are provisioned by an administrator.
@@ -30,14 +30,14 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(REMEMBER_KEY);
     if (saved) {
       setEmail(saved);
-      setRemember(true);
+      setRememberEmail(true);
     }
   }, []);
 
@@ -60,12 +60,12 @@ export function LoginPage() {
       return;
     }
     setLoading(true);
-    const { error } = await signIn(email, password, remember);
+    const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
       toast(error, 'error');
     } else {
-      if (remember) localStorage.setItem(REMEMBER_KEY, email);
+      if (rememberEmail) localStorage.setItem(REMEMBER_KEY, email);
       else localStorage.removeItem(REMEMBER_KEY);
       toast('Welcome to Goh Betoch Bank Asset Inventory Management Portal', 'success');
     }
@@ -119,9 +119,9 @@ export function LoginPage() {
 
           <div className="login-row">
             <label className="remember-row">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-              <span className="custom-checkbox">{remember && <Check size={12} strokeWidth={3} />}</span>
-              <span>Keep me signed in</span>
+              <input type="checkbox" checked={rememberEmail} onChange={(e) => setRememberEmail(e.target.checked)} />
+              <span className="custom-checkbox">{rememberEmail && <Check size={12} strokeWidth={3} />}</span>
+              <span>Remember my email</span>
             </label>
           </div>
 

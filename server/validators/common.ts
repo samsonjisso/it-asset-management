@@ -7,14 +7,14 @@ import { z } from 'zod';
  *  which vary slightly per table) — this schema's job is to sanitize
  *  types and reject obviously-malformed input before it ever reaches
  *  business logic. */
-export const labelCodeSchema = z.object({
+export const labelCodeSchema = z.looseObject({
   label: z.string().trim().min(1).max(255).optional(),
   code: z.string().trim().max(100).optional(),
   notes: z.string().max(2000).nullable().optional(),
-}).passthrough();
+});
 
 export const idParamSchema = z.object({
-  id: z.string().uuid('Invalid id'),
+  id: z.uuid('Invalid id'),
 });
 
 export const listQuerySchema = z.object({
@@ -28,4 +28,4 @@ export const listQuerySchema = z.object({
  *  license_subtypes, reminder_types, floors). crudConfig.ts's own hooks do
  *  the real per-table validation; this only guarantees the body is a
  *  JSON object, not an array/string/etc. */
-export const passthroughSchema = z.object({}).passthrough();
+export const passthroughSchema = z.looseObject({});

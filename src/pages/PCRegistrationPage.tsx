@@ -96,6 +96,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   const [viewing, setViewing] = useState<PCRegistration | null>(null);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -147,6 +148,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   const openAdd = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setFieldErrors({});
     setModalOpen(true);
   };
 
@@ -162,6 +164,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
 
   const openEdit = (rec: PCRegistration) => {
     setEditing(rec);
+    setFieldErrors({});
     setForm({
       hostname: rec.hostname,
       monitor_serial: rec.monitor_serial ?? '',
@@ -206,8 +209,26 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   const selectedDept = departments.find((d) => d.id === form.department_id);
   const isBranch = !!selectedDept?.is_branch;
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setFieldErrors({});
+    const showFieldError = (key: string, message: string) => {
+      setFieldErrors((previous) => ({ ...previous, [key]: message }));
+      toast(message, 'error');
+    };
+    if (!form.hostname.trim()) {
+      showFieldError('hostname', `${fieldLabel('hostname')} is required`);
+      return;
+    }
+    const hasIdentifier = [form.mac_address, form.service_tag, form.asset_tag].some(
+      (value) => value.trim() && value.trim().toLowerCase() !== 'n/a'
+    );
+    if (!hasIdentifier) {
+      const message = 'At least one of MAC Address, Service Tag / Serial Number, or Asset Tag is required';
+      setFieldErrors((previous) => ({ ...previous, mac_address: message, service_tag: message, asset_tag: message }));
+      toast(message, 'error');
+      return;
+    }
     for (const key of requiredBaseFields) {
       // Asset Tag is always optional - it auto-fills to "N/A" below
       // when left blank, so it can never be enforced as required even
@@ -220,37 +241,37 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       // a manually typed product_key (see LicensePicker manual-entry mode).
       if (key === 'license_id') {
         if (!form.license_id.trim() && !form.product_key.trim()) {
-          toast(`${fieldLabel(key)} is required`, 'error');
+          showFieldError(key, `${fieldLabel(key)} is required`);
           return;
         }
         continue;
       }
       const value = String((form as Record<string, unknown>)[key] ?? '').trim();
       if (!value) {
-        toast(`${fieldLabel(key)} is required`, 'error');
+        showFieldError(key, `${fieldLabel(key)} is required`);
         return;
       }
     }
     if (baseFields.includes('floor_number') && !isBranch && requiredBaseFields.includes('floor_number') && !form.floor_number.trim()) {
-      toast(`${fieldLabel('floor_number')} is required for Head Office`, 'error');
+      showFieldError('floor_number', `${fieldLabel('floor_number')} is required for Head Office`);
       return;
     }
     if (baseFields.includes('ip_address') && form.ip_address.trim() && !isValidIPv4(form.ip_address)) {
-      toast(`${fieldLabel('ip_address')} must be a valid IPv4 address (e.g., 10.6.13.45)`, 'error');
+      showFieldError('ip_address', `${fieldLabel('ip_address')} must be a valid IPv4 address (e.g., 10.6.13.45)`);
       return;
     }
     if (baseFields.includes('mac_address') && form.mac_address.trim() && !isValidMac(form.mac_address)) {
-      toast(`${fieldLabel('mac_address')} must look like 00:1A:2B:3C:4D:5E`, 'error');
+      showFieldError('mac_address', `${fieldLabel('mac_address')} must look like 00:1A:2B:3C:4D:5E`);
       return;
     }
     if (baseFields.includes('access_switch_ip') && form.access_switch_ip.trim() && !isValidIPv4(form.access_switch_ip)) {
-      toast(`${fieldLabel('access_switch_ip')} must be a valid IPv4 address (e.g., 10.6.1.103)`, 'error');
+      showFieldError('access_switch_ip', `${fieldLabel('access_switch_ip')} must be a valid IPv4 address (e.g., 10.6.1.103)`);
       return;
     }
     for (const f of extraFields) {
       const err = validateFieldValue(f, form.extra_data[f.key]);
       if (err) {
-        toast(err, 'error');
+        showFieldError(f.key, err);
         return;
       }
     }
@@ -262,7 +283,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       department_id: form.department_id || null,
       model_id: form.model_id || null,
       license_id: form.license_id || null,
-      extra_data: JSON.stringify(form.extra_data),
+      extra_data: form.extra_data,
       registered_by: profile?.id,
     };
     const { error } = editing
@@ -584,9 +605,9 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // JSX below can just do `baseFields.map(renderBaseField)` to get the
   // admin's configured order.
   const renderBaseField = (key: string): ReactNode => {
-    const required = requiredBaseFields.includes(key);
+    const required = key === 'hostname' || requiredBaseFields.includes(key);
     const textField = (formKey: TextFieldKey, extra: Record<string, unknown> = {}) => (
-      <Field key={key} label={fieldLabel(key)} required={required}>
+      <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]}>
         <TextInput
           value={form[formKey]}
           onChange={(e) => setForm({ ...form, [formKey]: e.target.value })}
@@ -600,7 +621,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     switch (key) {
       case 'hostname':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]}>
             <TextInput value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} placeholder={fieldPlaceholder(key)} required={required} />
           </Field>
         );
@@ -612,7 +633,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         // no skip toggle needed since there's no "unfilled" state to
         // opt out of.
         return (
-          <Field key={key} label={fieldLabel(key)}>
+          <Field key={key} label={fieldLabel(key)} error={fieldErrors[key]}>
             <TextInput
               value={form.asset_tag}
               onChange={(e) => setForm({ ...form, asset_tag: e.target.value })}
@@ -624,7 +645,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         return textField('service_tag');
       case 'mac_address':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]}>
             <TextInput value={form.mac_address} onChange={(e) => setForm({ ...form, mac_address: e.target.value })} placeholder={fieldPlaceholder(key)} pattern={MAC_PATTERN} title="Enter a valid MAC address, e.g. 00:1A:2B:3C:4D:5E" required={required} />
           </Field>
         );
@@ -634,6 +655,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             key={key}
             label={fieldLabel(key)}
             required={required}
+            error={fieldErrors[key]}
             hint={licenses.length === 0 ? 'No licenses registered yet - add one under License Registration, or enter it manually.' : 'Search and select from License Management, or enter it manually if it isn\'t listed'}
           >
             <LicensePicker
@@ -654,7 +676,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         return textField('generation_detail');
       case 'ip_address':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]}>
             <TextInput value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder={fieldPlaceholder(key)} pattern={IPV4_PATTERN} title="Enter a valid IPv4 address, e.g. 10.6.13.45" required={required} />
           </Field>
         );
@@ -662,7 +684,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         return textField('owner_name');
       case 'department_id':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]}>
             <SearchableSelect
               options={departments.map((d) => ({ value: d.id, label: `${d.name}${d.is_branch ? ' (Branch)' : ''}` }))}
               value={form.department_id}
@@ -686,7 +708,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       case 'floor_number':
         if (isBranch) {
           return (
-            <Field key={key} label={fieldLabel(key)}>
+            <Field key={key} label={fieldLabel(key)} error={fieldErrors[key]}>
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked readOnly disabled className="h-4 w-4 rounded border-slate-300" />
                 Branch <span className="text-slate-400">(no floor/location for branch PCs)</span>
@@ -699,6 +721,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             key={key}
             label={fieldLabel(key)}
             required={required}
+            error={fieldErrors[key]}
             hint={floors.length === 0 ? 'No floors defined yet - add one under Customization > Floors.' : undefined}
           >
             <SearchableSelect
@@ -716,7 +739,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         return textField('switch_port_number');
       case 'access_switch_name':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={accessSwitches.length === 0 ? 'No access switches defined yet - add one under Customization > Access Switches.' : undefined}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]} hint={accessSwitches.length === 0 ? 'No access switches defined yet - add one under Customization > Access Switches.' : undefined}>
             <SearchableSelect
               options={accessSwitches.map((s) => ({ value: s.label, label: s.label }))}
               value={form.access_switch_name}
@@ -730,7 +753,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         );
       case 'access_switch_ip':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={accessSwitchIps.length === 0 ? 'No access switch IPs defined yet - add one under Customization > Access Switch IPs.' : undefined}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]} hint={accessSwitchIps.length === 0 ? 'No access switch IPs defined yet - add one under Customization > Access Switch IPs.' : undefined}>
             <SearchableSelect
               options={accessSwitchIps.map((ip) => ({ value: ip.label, label: ip.label }))}
               value={form.access_switch_ip}
@@ -744,7 +767,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         );
       case 'patch_level_number':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={patchLevels.length === 0 ? 'No patch/level values defined yet - add one under Customization > Patch / Level Numbers.' : undefined}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]} hint={patchLevels.length === 0 ? 'No patch/level values defined yet - add one under Customization > Patch / Level Numbers.' : undefined}>
             <SearchableSelect
               options={patchLevels.map((p) => ({ value: p.label, label: p.label }))}
               value={form.patch_level_number}
@@ -758,7 +781,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
         );
       case 'model_id':
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={pcModels.length === 0 ? "No models defined yet — add one under Customization > Asset Models." : "Selecting a model fills in its default photo"}>
+          <Field key={key} label={fieldLabel(key)} required={required} error={fieldErrors[key]} hint={pcModels.length === 0 ? "No models defined yet — add one under Customization > Asset Models." : "Selecting a model fills in its default photo"}>
             <SearchableSelect
               options={pcModels.map((m) => ({ value: m.id, label: `${m.name}${m.manufacturer ? ` (${m.manufacturer})` : ''}` }))}
               value={form.model_id}
@@ -857,7 +880,8 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
                   <Field
                     key={f.key}
                     label={f.label}
-                    required={f.required}
+                    required
+                    error={fieldErrors[f.key]}
                     className={f.type === 'multiselect' || f.type === 'radio' || f.type === 'long_text' ? 'sm:col-span-2' : undefined}
                   >
                     <DynamicField

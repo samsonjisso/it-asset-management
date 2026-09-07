@@ -16,7 +16,7 @@ interface AuthContextType {
   user: AuthUserLike | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string, remember?: boolean) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   hasRole: (...roles: UserRole[]) => boolean;
@@ -73,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
-  const signIn = async (email: string, password: string, remember?: boolean) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password, remember });
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   };
 
