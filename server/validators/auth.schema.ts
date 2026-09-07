@@ -10,7 +10,7 @@ export const changePasswordSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
   full_name: z.string().trim().min(1, 'Full name is required'),
   role: z.enum(['admin', 'editor', 'reader', 'audit']).optional(),

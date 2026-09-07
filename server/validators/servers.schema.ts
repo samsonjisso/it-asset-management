@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const serverSchema = z.object({
+export const serverSchema = z.looseObject({
   server_type: z.string().trim().min(1).max(100).optional(),
   hostname: z.string().trim().min(1).max(255).optional(),
   ip_address: z.string().max(45).optional(),
@@ -16,4 +16,4 @@ export const serverSchema = z.object({
   os_release: z.string().max(100).optional(),
   host_location: z.string().max(100).optional(),
   notes: z.string().max(5000).nullable().optional(),
-}).passthrough();
+});

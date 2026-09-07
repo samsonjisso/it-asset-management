@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, JSX } from 'react';
 import { supabase, IPAddress, IPSubnet, Department, PatchLevel, DirectoryUser } from '../lib/supabase';
 import { pingIp, PingResult, fetchProfileDirectory } from '../lib/api';
 import { useAuth } from '../context/AuthContext';

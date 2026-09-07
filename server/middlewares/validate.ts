@@ -1,6 +1,23 @@
 import type { ZodSchema, AnyZodObject } from 'zod';
 import { ApiError } from '@/server/lib/http';
 
+const XSS_PATTERNS = [
+  /<\s*\/?\s*[a-z][^>]*>/i,
+  /(?:javascript|vbscript|data\s*:\s*text\/html)\s*:/i,
+  /\bon[a-z]+\s*=\s*(?:["']|[^\s>]+)/i,
+];
+
+function assertSafeInput(value: unknown, path = 'body'): void {
+  if (typeof value === 'string' && XSS_PATTERNS.some((pattern) => pattern.test(value))) {
+    throw new ApiError(400, `${path}: HTML or executable content is not allowed`);
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertSafeInput(item, `${path}[${index}]`));
+  } else if (value && typeof value === 'object') {
+    Object.entries(value).forEach(([key, item]) => assertSafeInput(item, `${path}.${key}`));
+  }
+}
+
 /**
  * Parses and validates a request body against a Zod schema. Throws a
  * 400 ApiError with a readable message on failure — the single place
@@ -13,6 +30,7 @@ export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<
   } catch {
     raw = {};
   }
+  assertSafeInput(raw);
   const result = schema.safeParse(raw);
   if (!result.success) {
     const first = result.error.issues[0];
@@ -36,6 +54,7 @@ export async function parsePartialBody<T extends AnyZodObject>(req: Request, sch
   } catch {
     raw = {};
   }
+  assertSafeInput(raw);
   const result = schema.partial().safeParse(raw) as { success: boolean; data?: any; error?: any };
   if (!result.success) {
     const first = result.error.issues[0];
@@ -48,6 +67,7 @@ export async function parsePartialBody<T extends AnyZodObject>(req: Request, sch
 /** Validates a URLSearchParams object against a Zod schema (query-string params). */
 export function parseQuery<T>(searchParams: URLSearchParams, schema: ZodSchema<T>): T {
   const obj = Object.fromEntries(searchParams.entries());
+  assertSafeInput(obj, 'query');
   const result = schema.safeParse(obj);
   if (!result.success) {
     const first = result.error.issues[0];

@@ -689,7 +689,7 @@ export const supabase = {
       };
     },
 
-    async signInWithPassword({ email, password, remember }: { email: string; password: string; remember?: boolean }) {
+    async signInWithPassword({ email, password }: { email: string; password: string }) {
       const res = await api.post<{ token: string; user: AuthUserLike; profile: Profile }>('/auth/login', {
         email,
         password,
@@ -697,7 +697,7 @@ export const supabase = {
       if (res.error || !res.data) {
         return { error: { message: res.error?.message ?? 'Sign in failed' } };
       }
-      setToken(res.data.token, !!remember);
+      setToken(res.data.token);
       currentSession = { access_token: res.data.token, user: res.data.user };
       notifyListeners();
       return { error: null };

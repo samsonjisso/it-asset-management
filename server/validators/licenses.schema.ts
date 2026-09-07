@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const licenseSchema = z.object({
+export const licenseSchema = z.looseObject({
   license_name: z.string().trim().min(1).max(255).optional(),
   license_type: z.string().trim().min(1).max(100).optional(),
   license_subtype: z.string().trim().min(1).max(255).optional(),
@@ -13,4 +13,4 @@ export const licenseSchema = z.object({
   notes: z.string().max(5000).nullable().optional(),
   attachment: z.string().nullable().optional(),
   attachment_name: z.string().max(255).nullable().optional(),
-}).passthrough();
+});

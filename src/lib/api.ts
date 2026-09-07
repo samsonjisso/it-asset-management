@@ -7,20 +7,17 @@ const TOKEN_KEY = 'gbb_token';
 // moment the session is no longer valid, not just on their next click.
 export const UNAUTHORIZED_EVENT = 'gbb:unauthorized';
 
-// Session Security: don't remember a signed-in user for longer than
-// necessary. By default the token lives in sessionStorage, so simply
-// closing the browser/tab ends the session immediately — nothing is
-// left behind for the next person to walk up to that machine and
-// resume. Only when the person explicitly checks "Keep me signed in"
-// on the login screen do we persist it to localStorage instead, and
-// even then the server's own token expiry (see JWT_EXPIRES_IN in
-// server/auth.js) caps how long that can ever be honored.
+// Session Security: the token lives in sessionStorage, so closing the
+// browser/tab ends the session. The login screen may remember the email
+// address separately, but never persists authentication credentials.
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  // Remove tokens written by the former "Keep me signed in" behavior.
+  localStorage.removeItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string | null, persist = false) {
+export function setToken(token: string | null) {
   if (typeof window === 'undefined') return;
   // Always clear both first so switching "remember me" on/off between
   // logins (or logging out) never leaves a stale copy in the other
@@ -28,7 +25,7 @@ export function setToken(token: string | null, persist = false) {
   sessionStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_KEY);
   if (!token) return;
-  (persist ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 export interface ApiResult<T> {
