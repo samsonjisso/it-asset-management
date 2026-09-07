@@ -16,3 +16,23 @@ export function matchSubnet(ip: string, subnets: IPSubnet[]): IPSubnet | null {
   }
   return best;
 }
+
+// A defined subnet prefix like "10.6.13." holds exactly three octets -
+// that's the shape the IP Availability Board can enumerate in full (a
+// /24, 256 addresses). Broader prefixes (e.g. "10.6.") describe more
+// addresses than a board can usefully show, so the board only lights up
+// for the three-octet shape.
+export function isEnumerableSubnet(prefix: string): boolean {
+  return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.?$/.test(prefix.trim());
+}
+
+// Every address in the /24 described by a three-octet prefix, e.g.
+// "10.6.13." -> ["10.6.13.0", "10.6.13.1", ..., "10.6.13.255"].
+export function enumerateSubnetIps(prefix: string): string[] {
+  const base = prefix.trim().replace(/\.$/, '');
+  const ips: string[] = [];
+  for (let octet = 0; octet <= 255; octet++) {
+    ips.push(`${base}.${octet}`);
+  }
+  return ips;
+}

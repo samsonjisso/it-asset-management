@@ -2,42 +2,38 @@
 @config "../../tailwind.config.js";
 
 :root {
-  --gbb-primary: #343494;
-  --gbb-primary-light: #4e4ec1;
-  --gbb-primary-dark: #242467;
-  --gbb-gold: #ffc800;
-  --gbb-gold-light: #ffd53d;
-  --gbb-gold-dark: #a38000;
-  --gbb-bg: #f5f5fc;
+  --gbb-primary: #0C66E4;
+  --gbb-primary-light: #388BFF;
+  --gbb-primary-dark: #0055CC;
+  --gbb-gold: #FFAB00;
+  --gbb-gold-light: #FFC400;
+  --gbb-gold-dark: #B65C02;
+  --gbb-bg: #F7F8F9;
   --gbb-surface: #ffffff;
-  --gbb-text: #0c0c23;
-  --gbb-text-muted: #43436b;
-  --gbb-border: #dadaf1;
-  --gbb-surface-muted: #f8f8fd;
-  --gbb-surface-hover: #f0f0fa;
-  --gbb-focus: rgba(52, 52, 148, 0.22);
-  --gbb-login-start: #242467;
-  --gbb-login-mid: #343494;
-  --gbb-login-end: #4e4ec1;
-  --gbb-dashboard-start: #343494;
-  --gbb-dashboard-end: #4e4ec1;
+  --gbb-text: #172B4D;
+  --gbb-text-muted: #6B778C;
+  --gbb-border: #DFE1E6;
 }
 
-html.dark {
-  --gbb-bg: #11111b;
-  --gbb-surface: #1b1b29;
-  --gbb-surface-muted: #161621;
-  --gbb-surface-hover: #242431;
-  --gbb-text: #f4f4f8;
-  --gbb-text-muted: #bcbcca;
-  --gbb-border: #343443;
-  --gbb-focus: rgba(183, 183, 255, 0.3);
-  --gbb-login-start: #0b0b18;
-  --gbb-login-mid: #171742;
-  --gbb-login-end: #292968;
-  --gbb-dashboard-start: #191943;
-  --gbb-dashboard-end: #292968;
+/* Dark mode palette — applied when <html> has the `dark` class (see
+   src/context/ThemeContext.tsx, which sets that class from the saved
+   preference/OS setting before first paint to avoid a flash). Kept as
+   the same variable names so anything already reading var(--gbb-*)
+   (this file's own `body`/`.gbb-mesh-bg` rules) picks it up for free;
+   component-level Tailwind classes use their own `dark:` variants
+   instead (see tailwind.config.js's `darkMode: 'class'`). */
+.dark {
+  --gbb-bg: #0F172A;
+  --gbb-surface: #111827;
+  --gbb-text: #E5E7EB;
+  --gbb-text-muted: #9CA3AF;
+  --gbb-border: #1F2937;
 }
+
+html {
+  transition: background-color 0.15s ease;
+}
+
 
 * {
   box-sizing: border-box;
@@ -50,27 +46,50 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* App-wide typeface: Inter (self-hosted variable font — see
+     main.tsx), matching tailwind.config.js's `fontFamily.sans` so the
+     `font-sans` utility and this default stay in sync. The original
+     system-font stack is kept as the fallback chain. Applies to every
+     screen — dashboard, forms, tables, nav, reports, buttons, modals,
+     dropdowns, notifications — since none of them override it locally. */
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'tnum' 0;
+  font-variation-settings: normal;
   background-color: var(--gbb-bg);
   color: var(--gbb-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Scrollbar styling */
+/* Flat neutral app-shell background (Jira uses a plain light gray, no texture) */
+.gbb-mesh-bg {
+  background-color: var(--gbb-bg);
+}
+
+/* Scrollbar styling — neutral gray like Atlassian's chrome */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #ede8fb;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gbb-primary);
-  border-radius: 5px;
+  background: #C1C7D0;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gbb-primary-light);
+  background: #A5ADBA;
+  background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4B5563;
 }
 
 /* Progress bar animation */
@@ -85,7 +104,7 @@ body {
   left: 0;
   height: 3px;
   width: 25%;
-  background: linear-gradient(90deg, var(--gbb-gold), var(--gbb-gold-light), var(--gbb-gold));
+  background: linear-gradient(90deg, var(--gbb-primary), var(--gbb-primary-light), var(--gbb-primary));
   z-index: 9999;
   animation: gbb-progress 1.2s ease-in-out infinite;
 }
@@ -96,16 +115,25 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .gbb-fade-in {
-  animation: gbb-fade-in 0.3s ease-out;
+  animation: gbb-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Slide-in from right */
 @keyframes gbb-slide-in {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 .gbb-slide-in {
-  animation: gbb-slide-in 0.3s ease-out;
+  animation: gbb-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pop-in for modals / dropdowns */
+@keyframes gbb-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.gbb-pop-in {
+  animation: gbb-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Pulse for notifications */
@@ -117,21 +145,39 @@ body {
   animation: gbb-pulse 2s ease-in-out infinite;
 }
 
+/* Ring pulse used for live status indicators (e.g. ping in progress) */
+@keyframes gbb-ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(12, 102, 228, 0.35); }
+  70% { box-shadow: 0 0 0 10px rgba(12, 102, 228, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(12, 102, 228, 0); }
+}
+.gbb-ring-pulse {
+  animation: gbb-ring-pulse 1.6s ease-out infinite;
+}
+
 /* Card hover lift */
 .gbb-card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .gbb-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 16, 242, 0.13);
+  box-shadow: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  border-color: #85B8FF;
 }
 
 /* Gradient text */
 .gbb-gradient-text {
-  background: linear-gradient(135deg, var(--gbb-primary), var(--gbb-gold));
+  background: linear-gradient(135deg, var(--gbb-primary), var(--gbb-primary-dark));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Skeleton shimmer for loading states */
+.gbb-skeleton {
+  background: linear-gradient(90deg, #EBECF0 25%, #F4F5F7 37%, #EBECF0 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
 /* Print styles */
@@ -156,142 +202,147 @@ body {
   }
 }
 
-/* Table styles */
+/* Table styles — Jira/Atlassian "object list" table: flat light-gray
+   header row with small uppercase gray labels (not a colored gradient),
+   soft blue hover, hairline borders only. */
 .gbb-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 .gbb-table th {
-  background: var(--gbb-primary);
-  color: white;
-  padding: 12px 16px;
+  background: #F7F8F9;
+  color: #5E6C84;
+  padding: 10px 16px;
   text-align: left;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid var(--gbb-border);
 }
 .gbb-table td {
-  padding: 12px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--gbb-border);
   font-size: 0.875rem;
+  color: var(--gbb-text);
+  vertical-align: middle;
+  white-space: nowrap;
 }
 .gbb-table tbody tr {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.1s ease;
+}
+.gbb-table tbody tr:last-child td {
+  border-bottom: none;
 }
 .gbb-table tbody tr:hover {
-  background-color: #f0ebff;
+  background-color: #E9F2FF;
 }
-
-/* Input focus */
-.gbb-input:focus {
-  outline: none;
-  border-color: var(--gbb-primary);
-  box-shadow: 0 0 0 3px var(--gbb-focus);
-}
-
-button, a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-.gbb-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 2.5rem;
-  border-radius: 0.625rem;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-}
-
-.gbb-button:hover {
-  transform: translateY(-1px);
-}
-
-.gbb-button:focus-visible,
-.gbb-icon-button:focus-visible {
-  outline: 3px solid var(--gbb-focus);
-  outline-offset: 2px;
-}
-
-.gbb-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
-  border-radius: 0.625rem;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
-}
-
-.gbb-icon-button:hover {
-  transform: translateY(-1px);
-}
-
-.gbb-theme-button {
-  color: var(--gbb-primary) !important;
-}
-
-.gbb-theme-button svg {
-  stroke: var(--gbb-primary) !important;
-}
-
-.gbb-theme-button:hover {
-  background-color: var(--gbb-surface-hover) !important;
-  color: var(--gbb-primary-dark) !important;
-}
-
-.gbb-theme-button:hover svg {
-  stroke: var(--gbb-primary-dark) !important;
-}
-
-html.dark .gbb-theme-button {
-  color: #b7b7ff !important;
-}
-
-html.dark .gbb-theme-button svg {
-  stroke: #b7b7ff !important;
-}
-
-html.dark .gbb-theme-button:hover {
-  background-color: #242431 !important;
-  color: #b7b7ff !important;
-}
-
-html.dark .gbb-theme-button:hover svg {
-  stroke: #b7b7ff !important;
-}
-
-.gbb-login-shell {
-  background: linear-gradient(135deg, var(--gbb-login-start), var(--gbb-login-mid), var(--gbb-login-end));
-}
-
-.gbb-login-panel {
-  background-color: color-mix(in srgb, var(--gbb-surface) 96%, transparent);
+.gbb-table tbody tr:hover td {
   color: var(--gbb-text);
 }
 
-.gbb-dashboard-banner {
-  background: linear-gradient(135deg, var(--gbb-dashboard-start), var(--gbb-dashboard-end));
+/* Input focus — GBB's own blue-black (#3835A3, the logo hue) focus ring
+   on square-ish fields, replacing the earlier generic blue. */
+.gbb-input {
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.gbb-input:focus {
+  outline: none;
+  border-color: #3835A3;
+  box-shadow: 0 0 0 1px #3835A3;
 }
 
-html.dark body { background:var(--gbb-bg); color:var(--gbb-text); color-scheme:dark; }
-html.dark .bg-white { background-color:#1b1b29 !important; }
-html.dark .bg-gray-50 { background-color:#161621 !important; }
-html.dark .bg-gray-100 { background-color:#20202c !important; }
-html.dark .bg-gray-200 { background-color:#2a2a38 !important; }
-html.dark .text-gray-900 { color:#f4f4f8 !important; }
-html.dark .text-gray-800 { color:#ededf5 !important; }
-html.dark .text-gray-700 { color:#d7d7e2 !important; }
-html.dark .text-gray-600 { color:#bcbcca !important; }
-html.dark .text-gray-500 { color:#9999aa !important; }
-html.dark .text-gray-400 { color:#858596 !important; }
-html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color:#343443 !important; }
-html.dark input, html.dark textarea, html.dark select { background-color:#181824; color:#eeeeF5; border-color:#3a3a49; }
-html.dark table { color:#eeeeF5; }
-html.dark tr { border-color:#343443 !important; }
-html.dark .hover\:bg-gray-50:hover { background-color:#242431 !important; }
-html.dark .bg-\[\#f5f5fc\] { background-color:var(--gbb-bg) !important; }
-html.dark .border-\[\#dadaf1\] { border-color:var(--gbb-border) !important; }
+/* Jira-style status lozenge */
+.gbb-lozenge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+/* ===== Login page — single centered card on a brand-color gradient
+   backdrop, matching the plain reference "Login" template. Colors are
+   the app's own brand scale (tailwind.config.js `brand`, built from
+   the GBB logo navy) plus the gold logo accent for the button gradient
+   and focus/link color, so the page reads as GBB without introducing
+   any new palette. ===== */
+.login-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #5552B0 0%, #3835A3 45%, #232267 100%);
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #F2F2F4;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(16, 16, 48, 0.35);
+  padding: clamp(28px, 5vh, 40px) clamp(24px, 5vw, 36px) 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.dark .login-page { background: linear-gradient(135deg, #191748 0%, #101030 45%, #08081d 100%); }
+.dark .login-card { background: #191748; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
+.login-logo { display: block; margin: 0 auto 14px; object-fit: contain; }
+.login-title { margin: 0 0 4px; color: #191748; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.dark .login-title { color: #F2F2F9; }
+.login-subtitle { margin: 0 0 26px; color: #6B778C; font-size: 12.5px; letter-spacing: .01em; }
+.dark .login-subtitle { color: #A8A7D7; }
+.login-form { width: 100%; display: flex; flex-direction: column; }
+.gbb-input-wrap { position: relative; display: flex; align-items: center; margin-bottom: 20px; }
+.gbb-input-wrap input { width: 100%; height: 44px; border: none; border-bottom: 1.5px solid #b9bccb; border-radius: 0; outline: none; background: transparent; color: #191748; padding: 0 4px 0 26px; font-size: 14px; transition: border-color .2s; font-family: inherit; }
+.gbb-input-wrap input:-webkit-autofill,
+.gbb-input-wrap input:-webkit-autofill:hover,
+.gbb-input-wrap input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #F2F2F4 inset; -webkit-text-fill-color: #191748; transition: background-color 9999s ease-out; }
+.dark .gbb-input-wrap input { border-bottom-color: #5E6C84; color: #F2F2F9; }
+.dark .gbb-input-wrap input:-webkit-autofill,
+.dark .gbb-input-wrap input:-webkit-autofill:hover,
+.dark .gbb-input-wrap input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #191748 inset; -webkit-text-fill-color: #F2F2F9; }
+.gbb-input-wrap input::placeholder { color: #97a0af; }
+.dark .gbb-input-wrap input::placeholder { color: #8993A4; }
+.gbb-input-wrap input:focus { border-color: #3835A3; }
+.gbb-input-wrap .input-icon { position: absolute; left: 0; color: #8993A4; pointer-events: none; }
+.visibility-button { position: absolute; right: 0; display: grid; height: 100%; width: 26px; place-items: center; border: 0; background: none; color: #8993A4; cursor: pointer; }
+.visibility-button:hover { color: #3835A3; }
+.login-row { display: flex; align-items: center; justify-content: flex-start; margin: -6px 0 18px; }
+.remember-row { position: relative; display: flex; align-items: center; gap: 8px; color: #4b5468; font-size: 12.5px; user-select: none; cursor: pointer; }
+.dark .remember-row { color: #C1C7D0; }
+.remember-row input { position: absolute; opacity: 0; }
+.custom-checkbox { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid #ccd2dd; border-radius: 3px; color: white; background: white; transition: all .2s; flex-shrink: 0; }
+.dark .custom-checkbox { border-color: #5E6C84; background: #253858; }
+.remember-row input:checked + .custom-checkbox { border-color: #3835A3; background: #3835A3; }
+.sign-in-button { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; width: 100%; border: 0; border-radius: 7px; color: white; background: linear-gradient(90deg, #3835A3 0%, #5552B0 55%, #7E7CC4 100%); box-shadow: 0 8px 18px rgba(55,52,161,.3); font-size: 14px; font-weight: 700; letter-spacing: .01em; transition: box-shadow .2s, transform .2s, opacity .2s; cursor: pointer; font-family: inherit; }
+.sign-in-button:hover { box-shadow: 0 10px 22px rgba(55,52,161,.4); transform: translateY(-1px); }
+.sign-in-button:active { transform: translateY(0); }
+.sign-in-button:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+.forgot-button { margin-top: 22px; border: 0; background: none; color: #4b5468; font-size: 12.5px; cursor: pointer; padding: 0; font-family: inherit; }
+.dark .forgot-button { color: #C1C7D0; }
+.forgot-button span { color: #3835A3; font-weight: 700; }
+.dark .forgot-button span { color: #A8A7D7; }
+.forgot-button:hover span { text-decoration: underline; }
+.login-footer-note { margin: 8px 0 0; color: #4b5468; font-size: 12.5px; }
+.dark .login-footer-note { color: #C1C7D0; }
+.login-footer-note button { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #3835A3; cursor: pointer; }
+.dark .login-footer-note button { color: #A8A7D7; }
+.login-footer-note button:hover { text-decoration: underline; }
+
+@media (max-width: 420px) {
+  .login-title { font-size: 23px; }
+}

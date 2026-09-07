@@ -1,10 +1,16 @@
-"use client";
+'use client';
 
-import { useSearchParams } from "next/navigation";
-import { PCRegistrationPage } from "./PCRegistrationPage";
+import { useSearchParams } from 'next/navigation';
+import { PCRegistrationPage } from '@/pages/PCRegistrationPage';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const register = searchParams.get('register');
-  return <PCRegistrationPage autoOpenCreate={register ? Number(register) : undefined} />;
+  const createParam = searchParams.get('create');
+  const autoOpenCreate = createParam ? Number(createParam) : undefined;
+  return (
+    <RouteGuard module="pc">
+      <PCRegistrationPage autoOpenCreate={autoOpenCreate} />
+    </RouteGuard>
+  );
 }

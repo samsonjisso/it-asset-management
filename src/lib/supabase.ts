@@ -1,4 +1,3 @@
-"use client";
 // Local replacement for the old Supabase client.
 // Keeps the same shape (`supabase.from(table)...`, `supabase.auth...`)
 // that the rest of the app already uses, but talks to our own Express
@@ -11,7 +10,7 @@ import { api, getToken, setToken } from './api';
 // editor - can add and modify asset information
 // reader - view-only access
 // audit  - can view all system information but cannot edit or delete anything
-export type UserRole = 'admin' | 'manager' | 'register_user' | 'assessor' | 'editor' | 'reader' | 'audit';
+export type UserRole = 'admin' | 'editor' | 'reader' | 'audit';
 
 export interface AuthUserLike {
   id: string;
@@ -31,6 +30,15 @@ export interface Profile {
   phone?: string | null;
   is_active: boolean;
   must_change_password: boolean;
+  // Ownership: at most one profile has this set - see is_owner in
+  // server/schema.sql. That account can't be deleted, demoted,
+  // disabled, or module-restricted by any other admin; ownership only
+  // moves via the explicit transfer-ownership action.
+  is_owner: boolean;
+  // Per-User Module Access: null/absent means unrestricted (this
+  // account gets everything its role normally allows). Otherwise the
+  // list of module ids (see src/lib/permissions.ts) it's limited to.
+  permissions?: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +60,13 @@ export interface PCRegistration {
   asset_tag?: string | null;
   service_tag?: string | null;
   mac_address?: string | null;
+  // Read-only mirror of the linked license's license_key, kept in sync
+  // by the server whenever license_id changes. Only present as a
+  // fallback for older records saved before this field was linked.
   product_key?: string | null;
+  // Links this PC to a record in License Management (see `license`
+  // below for the expanded record the server attaches).
+  license_id?: string | null;
   cpu?: string | null;
   memory_detail?: string | null;
   generation_detail?: string | null;
@@ -71,6 +85,35 @@ export interface PCRegistration {
   created_at: string;
   updated_at: string;
   department?: Department | null;
+  // Attached server-side from license_id - the full linked license
+  // record, so the form/detail view can show its type, subtype,
+  // vendor, and key without a second lookup.
+  license?: License | null;
+  // Links this PC to its authoritative record in IP Management
+  // (ip_addresses.id) whenever ip_address matches one already
+  // registered there - set server-side, never taken from the client.
+  ip_id?: string | null;
+  // Attached server-side from ip_id - the full linked IP Management
+  // record, so the form/detail view can show its owner/status/subnet
+  // without a second lookup.
+  ip_record?: IPAddress | null;
+  // JSON-encoded Record<string, string> keyed by a custom field's key
+  // (see PcFormFields.fields below) — same encoding as Device.extra_data.
+  extra_data?: string | null;
+}
+
+// Single-row config for the "Register New PC" form — see
+// src/lib/pcFormFields.ts for the parse helpers and the full set of
+// standard field keys/labels this drives.
+export interface PcFormFields {
+  id: string;
+  base_fields?: string | null; // JSON-encoded string[] of standard field keys, IN DISPLAY ORDER
+  required_base_fields?: string | null; // JSON-encoded string[] — subset of base_fields that are mandatory
+  field_labels?: string | null; // JSON-encoded { [fieldKey]: string } — custom labels for standard fields
+  fields?: string | null; // JSON-encoded DeviceTypeField[] of fully custom fields
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
 }
 
 export interface LicenseType {
@@ -95,6 +138,7 @@ export interface LicenseSubtype {
 export interface License {
   id: string;
   asset_id?: string | null;
+  license_name?: string | null;
   license_type: string;
   license_subtype?: string | null;
   vendor?: string | null;
@@ -104,17 +148,56 @@ export interface License {
   expiry_date?: string | null;
   alert_sent: boolean;
   notes?: string | null;
+  // Supporting document for this license (e.g. license certificate or
+  // proof of purchase) - stored as a base64 data URL, with the
+  // original filename kept alongside it for display/download.
+  attachment?: string | null;
+  attachment_name?: string | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
+  // Attached server-side - the PC (if any) this license is currently
+  // linked to via pc_registrations.license_id. A license can only be
+  // linked to one PC at a time.
+  assigned_pc?: { id: string; hostname: string; asset_id?: string | null } | null;
 }
+
+// The full set of input types an admin can choose from when defining a
+// custom field for a device type — see FIELD_TYPE_OPTIONS in
+// lib/deviceTypeFields.tsx for the human labels + which of these need
+// an `options` list. Kept as a plain string union (not string|undefined)
+// on new fields going forward, but parsing always falls back to 'text'
+// for older records saved before a given type existed.
+export type DeviceFieldType =
+  | 'text'
+  | 'long_text'
+  | 'number'
+  | 'decimal'
+  | 'date'
+  | 'datetime'
+  | 'dropdown'
+  | 'multiselect'
+  | 'checkbox'
+  | 'radio'
+  | 'ip_address'
+  | 'mac_address'
+  | 'email'
+  | 'url'
+  | 'image'
+  | 'file'
+  | 'employee'
+  | 'department'
+  | 'branch';
 
 export interface DeviceTypeField {
   key: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'number' | 'date';
+  type?: DeviceFieldType;
   required?: boolean; // if true, this field must be filled in before the device can be saved
+  // Choice list for 'dropdown' | 'multiselect' | 'radio' fields. Ignored
+  // (and not needed) for every other field type.
+  options?: string[];
 }
 
 export interface DeviceType {
@@ -133,6 +216,15 @@ export interface DeviceType {
   created_by?: string | null;
 }
 
+// Minimal, non-sensitive user record returned by GET /profiles/directory
+// — used to populate an "Employee/User Selection" custom field without
+// requiring the admin/audit-only full profile list.
+export interface DirectoryUser {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
 export interface DeviceOwner {
   id: string;
   code: string;
@@ -147,6 +239,12 @@ export interface Device {
   asset_id?: string | null;
   device_type: string;
   device_owner?: string | null;
+  department_id?: string | null;
+  // Attached server-side from department_id - the full linked
+  // Customization > Departments record, so the form/detail view can
+  // show its name without a second lookup (same pattern as
+  // PCRegistration.department below).
+  department?: Department | null;
   device_model?: string | null;
   hostname?: string | null;
   ip_address?: string | null;
@@ -154,16 +252,40 @@ export interface Device {
   mac_address?: string | null;
   location?: string | null;
   rack_number?: string | null;
-  extra_data?: string | null; // JSON-encoded Record<string, string> keyed by DeviceTypeField.key
+  // JSON-encoded Record<string, string> keyed by DeviceTypeField.key. Every
+  // value is stored as a string regardless of field type — multiselect
+  // encodes its array as a JSON string, checkbox as "true"/"false", and
+  // image/file fields as a JSON string of { name, dataUrl }. See
+  // lib/deviceFieldValues.ts for the encode/decode/format helpers.
+  extra_data?: string | null;
   model_id?: string | null;
   image?: string | null;
   notes?: string | null;
+  // Links this device to its authoritative record in IP Management
+  // (ip_addresses.id) whenever ip_address matches one already
+  // registered there - set server-side, never taken from the client.
+  ip_id?: string | null;
+  // Attached server-side from ip_id - the full linked IP Management
+  // record, so the form/detail view can show its owner/status/subnet
+  // without a second lookup.
+  ip_record?: IPAddress | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ServerOwner {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: vendors/manufacturers offered as a dropdown on the
+// License, Asset Model and Server Registration forms.
+export interface Vendor {
   id: string;
   code: string;
   label: string;
@@ -186,6 +308,79 @@ export interface ServerType {
 // Customization: server environments (Production, Test, Standby, ...)
 // offered on the Server Registration form.
 export interface ServerEnvironment {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: OS Release values (Red Hat Enterprise Linux 8/9,
+// Windows Server 2019/2022, Ubuntu Server, ...) offered on the Server
+// Registration form's "OS Release" dropdown.
+export interface OSRelease {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: Host Location / platform values (VMware ESXi,
+// Hyper-V, Physical Server, Cloud, ...) offered on the Server
+// Registration form's "Host Location" dropdown. Not limited to VMware
+// ESXi — administrators can add any platform/location.
+export interface HostLocation {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: Head Office floor/location values offered on the PC
+// Registration form. Branch devices skip this field entirely.
+export interface Floor {
+  id: string;
+  code: string;
+  label: string;
+  // Admin-controlled display/dropdown order - see the reorder arrows
+  // on the Floors Customization page. Lower sorts first.
+  position: number;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: Access Switch Name values offered on the PC
+// Registration form's "Access Switch Name" field.
+export interface AccessSwitch {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: Access Switch IP Address values offered on the PC
+// Registration form's "Access Switch IP Address" field.
+export interface AccessSwitchIp {
+  id: string;
+  code: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+// Customization: Patch / Level Number values, shared by the PC
+// Registration form's "Patch / Level Number" field and the IP
+// Management form's "Patch Panel Label / Number" field.
+export interface PatchLevel {
   id: string;
   code: string;
   label: string;
@@ -233,6 +428,7 @@ export interface Server {
   environment: string;
   server_owner: string;
   network_subnet?: string | null;
+  vendor?: string | null;
   image?: string | null;
   ram?: string | null;
   cpu?: string | null;
@@ -263,49 +459,48 @@ export interface Reminder {
   email_sent: boolean;
   is_notified: boolean;
   is_dismissed: boolean;
+  // Set only for reminders auto-generated from a license's expiry date
+  // (see LicenseRegistrationPage's "Remind me before expiry" option).
+  // Null for reminders created manually from the Reminders page.
+  license_id?: string | null;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface Asset {
+// Admin Change Notifications: logged automatically whenever an
+// important record (asset/IP/device/server/license/PC/user) is
+// updated or deleted - see recordNotification in server/crud.js.
+export interface AdminNotification {
   id: string;
-  asset_id?: string | null;
-  asset_name: string;
-  asset_type: string;
-  department_id?: string | null;
-  owner?: string | null;
-  location?: string | null;
-  model?: string | null;
-  hostname?: string | null;
-  serial_number?: string | null;
-  manufacturer?: string | null;
-  supplier?: string | null;
-  operating_system?: string | null;
-  ip_address?: string | null;
-  notes?: string | null;
-  registered_by?: string | null;
+  action: 'update' | 'delete';
+  table_name: string;
+  record_type: string;
+  record_id?: string | null;
+  record_label?: string | null;
+  summary: string;
+  actor_id?: string | null;
+  actor_name: string;
+  is_read: boolean;
   created_at: string;
-  updated_at: string;
-  department?: Department | null;
 }
 
 export interface IPAddress {
   id: string;
   ip_address: string;
+  subnet_id?: string | null;
   hostname?: string | null;
   department_id?: string | null;
   ip_owner?: string | null;
   mac_address?: string | null;
   access_switch_port?: string | null;
   patch_panel_label?: string | null;
-  status: 'assigned' | 'reserved' | 'available' | 'decommissioned';
+  status: 'unassigned' | 'assigned' | 'reserved' | 'available' | 'decommissioned';
   notes?: string | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;
   department?: Department | null;
-  related_assets?: { pc?: { id:string; asset_id?:string|null; hostname?:string|null }|null; device?: { id:string; asset_id?:string|null; hostname?:string|null; device_type?:string|null }|null; server?: { id:string; asset_id?:string|null; hostname?:string|null; server_type?:string|null }|null; };
 }
 
 type AuthListener = (session: AuthSessionLike | null) => void;
@@ -494,7 +689,7 @@ export const supabase = {
       };
     },
 
-    async signInWithPassword({ email, password }: { email: string; password: string }) {
+    async signInWithPassword({ email, password, remember }: { email: string; password: string; remember?: boolean }) {
       const res = await api.post<{ token: string; user: AuthUserLike; profile: Profile }>('/auth/login', {
         email,
         password,
@@ -502,7 +697,7 @@ export const supabase = {
       if (res.error || !res.data) {
         return { error: { message: res.error?.message ?? 'Sign in failed' } };
       }
-      setToken(res.data.token);
+      setToken(res.data.token, !!remember);
       currentSession = { access_token: res.data.token, user: res.data.user };
       notifyListeners();
       return { error: null };
@@ -526,7 +721,13 @@ export const supabase = {
         email: string;
         password: string;
         email_confirm?: boolean;
-        user_metadata?: { full_name?: string; role?: UserRole; phone?: string; must_change_password?: boolean };
+        user_metadata?: {
+          full_name?: string;
+          role?: UserRole;
+          phone?: string;
+          must_change_password?: boolean;
+          permissions?: string[] | null;
+        };
       }) {
         const res = await api.post<{ user: AuthUserLike }>('/auth/admin/create-user', {
           email: payload.email,
@@ -535,6 +736,7 @@ export const supabase = {
           role: payload.user_metadata?.role,
           phone: payload.user_metadata?.phone,
           must_change_password: payload.user_metadata?.must_change_password,
+          permissions: payload.user_metadata?.permissions ?? null,
         });
         if (res.error || !res.data) {
           return { data: { user: null }, error: { message: res.error?.message ?? 'Could not create user' } };

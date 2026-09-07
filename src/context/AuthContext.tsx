@@ -1,10 +1,14 @@
-"use client";
+'use client';
+
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { supabase, Profile, UserRole, AuthSessionLike, AuthUserLike } from '../lib/supabase';
+import { isModuleAllowed } from '../lib/permissions';
+import { UNAUTHORIZED_EVENT } from '../lib/api';
 
 // Auto sign-out after this many milliseconds of no mouse/keyboard/touch
-// activity. Bank security requirement: 1-2 minutes of inactivity.
-const IDLE_TIMEOUT_MS = 1 * 60 * 1000;
+// activity (resets on every mouse/keyboard/touch/scroll event via
+// IDLE_EVENTS below).
+const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
 const IDLE_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const;
 
 interface AuthContextType {
@@ -12,11 +16,14 @@ interface AuthContextType {
   user: AuthUserLike | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string, remember?: boolean) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   hasRole: (...roles: UserRole[]) => boolean;
   canWrite: () => boolean;
+  // Per-User Module Access: true if this account is either unrestricted
+  // or explicitly granted the given module id (see src/lib/permissions.ts).
+  hasModuleAccess: (moduleId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signIn = async (email: string, password: string, remember?: boolean) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password, remember });
     return { error: error?.message ?? null };
   };
 
@@ -77,11 +84,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  const signOutRef = useRef(signOut);
+  signOutRef.current = signOut;
+
+  // Session Security: a 401 from the server (expired/revoked token,
+  // account disabled elsewhere) must drop the session immediately, not
+  // just on the user's next click — otherwise a stale-but-rendered
+  // authenticated page could sit on screen indefinitely.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      signOutRef.current();
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
+
+  // Require login again after leaving the page: the browser's
+  // Back/Forward navigation can restore this app from the back-forward
+  // cache (bfcache) — the exact in-memory, already-rendered authenticated
+  // screen — without re-running any of the mount logic above and without
+  // contacting the server at all. `pageshow` fires on every such restore
+  // with `event.persisted === true`, which is our signal to re-validate
+  // the session against the server right then: if it's no longer valid
+  // (logged out, expired, revoked), the resulting state flips to
+  // logged-out and the login screen replaces whatever was cached on
+  // screen. A still-valid session is left alone.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+      });
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, [loadProfile]);
+
   // Idle-timeout: automatically sign the user out after IDLE_TIMEOUT_MS of
   // no activity, so an unattended, logged-in session doesn't stay open.
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const signOutRef = useRef(signOut);
-  signOutRef.current = signOut;
 
   useEffect(() => {
     if (!session) {
@@ -105,17 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [session]);
 
-  useEffect(() => {
-    const onExpired = () => {
-      signOutRef.current();
-      setProfile(null);
-      setSession(null);
-      window.location.assign('/login');
-    };
-    window.addEventListener('gbb:session-expired', onExpired);
-    return () => window.removeEventListener('gbb:session-expired', onExpired);
-  }, []);
-
   const refreshProfile = async () => {
     if (session?.user) await loadProfile(session.user.id);
   };
@@ -125,7 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const canWrite = () => {
-    return profile ? ['admin', 'manager', 'register_user', 'editor'].includes(profile.role) : false;
+    return profile ? ['admin', 'editor'].includes(profile.role) : false;
+  };
+
+  const hasModuleAccess = (moduleId: string) => {
+    if (!profile) return false;
+    return isModuleAllowed(profile.permissions, moduleId);
   };
 
   return (
@@ -140,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshProfile,
         hasRole,
         canWrite,
+        hasModuleAccess,
       }}
     >
       {children}

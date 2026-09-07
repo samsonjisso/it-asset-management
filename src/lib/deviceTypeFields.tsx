@@ -4,7 +4,47 @@ import {
   Server as Rack, Camera, Printer, ScanLine, Boxes, Monitor, Cpu, Database,
   Laptop, Smartphone, Lock, KeyRound, Usb, Radio, Fingerprint, Landmark, Cctv, Cable,
 } from 'lucide-react';
-import { DeviceType, DeviceTypeField } from './supabase';
+import { DeviceType, DeviceTypeField, DeviceFieldType } from './supabase';
+
+// Every field type an admin can pick when defining a custom field,
+// grouped for the type picker in the field editor. `needsOptions` means
+// the editor must also collect a list of choices (Dropdown/Multi-select/
+// Radio Button); everything else is a bare label + placeholder.
+export const FIELD_TYPE_OPTIONS: { value: DeviceFieldType; label: string; group: string; needsOptions?: boolean }[] = [
+  { value: 'text', label: 'Text', group: 'Basic' },
+  { value: 'long_text', label: 'Long Text', group: 'Basic' },
+  { value: 'number', label: 'Number', group: 'Basic' },
+  { value: 'decimal', label: 'Decimal', group: 'Basic' },
+  { value: 'date', label: 'Date', group: 'Basic' },
+  { value: 'datetime', label: 'Date & Time', group: 'Basic' },
+  { value: 'dropdown', label: 'Dropdown', group: 'Choice', needsOptions: true },
+  { value: 'multiselect', label: 'Multi-select', group: 'Choice', needsOptions: true },
+  { value: 'checkbox', label: 'Checkbox', group: 'Choice' },
+  { value: 'radio', label: 'Radio Button', group: 'Choice', needsOptions: true },
+  { value: 'ip_address', label: 'IP Address', group: 'Network' },
+  { value: 'mac_address', label: 'MAC Address', group: 'Network' },
+  { value: 'email', label: 'Email', group: 'Contact' },
+  { value: 'url', label: 'URL', group: 'Contact' },
+  { value: 'image', label: 'Image', group: 'Attachment' },
+  { value: 'file', label: 'File Upload', group: 'Attachment' },
+  { value: 'employee', label: 'Employee/User Selection', group: 'Reference' },
+  { value: 'department', label: 'Department Selection', group: 'Reference' },
+  { value: 'branch', label: 'Branch Selection', group: 'Reference' },
+];
+
+export const FIELD_TYPE_META: Record<DeviceFieldType, { label: string; needsOptions?: boolean }> =
+  Object.fromEntries(FIELD_TYPE_OPTIONS.map((o) => [o.value, { label: o.label, needsOptions: o.needsOptions }])) as Record<
+    DeviceFieldType,
+    { label: string; needsOptions?: boolean }
+  >;
+
+export function fieldTypeNeedsOptions(type?: DeviceFieldType | string): boolean {
+  return !!(type && FIELD_TYPE_META[type as DeviceFieldType]?.needsOptions);
+}
+
+export function fieldTypeLabel(type?: DeviceFieldType | string): string {
+  return (type && FIELD_TYPE_META[type as DeviceFieldType]?.label) || 'Text';
+}
 
 // Icons for the built-in device type codes seeded on first run. Any
 // type added later (built-in or custom) that isn't listed here just
@@ -77,7 +117,11 @@ export function getDeviceTypeIcon(deviceTypes: DeviceType[], code: string): Reac
 // include/require/rename pattern as the base fields below, driven by
 // each type's core_fields / required_core_fields / field_labels.
 export const CORE_FIELD_META: Record<string, { label: string; placeholder?: string }> = {
-  device_owner: { label: 'Device Owner / Department' },
+  device_owner: { label: 'Device Owner' },
+  // Sourced from Customization > Departments (the same table PC
+  // Registration's "Department/Branch" field draws from) rather than
+  // its own lookup table - see department_id on the Device interface.
+  department_id: { label: 'Department' },
   device_model: { label: 'Device Model (Detail Specification)', placeholder: 'e.g., Dell PowerEdge R740' },
   hostname: { label: 'Device Hostname', placeholder: 'Insert serial number if no hostname' },
 };
@@ -168,7 +212,16 @@ export function parseExtraFields(type?: DeviceType | null): DeviceTypeField[] {
   if (!type?.fields) return [];
   try {
     const parsed = JSON.parse(type.fields);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Normalize: older records may predate the 'type'/'options'
+    // fields entirely, or a field's type may no longer be recognized
+    // (e.g. this build removed one) — fall back to plain Text rather
+    // than letting the form silently drop the field.
+    return parsed.map((f: DeviceTypeField) => ({
+      ...f,
+      type: f.type && FIELD_TYPE_META[f.type] ? f.type : 'text',
+      options: Array.isArray(f.options) ? f.options : undefined,
+    }));
   } catch {
     return [];
   }
