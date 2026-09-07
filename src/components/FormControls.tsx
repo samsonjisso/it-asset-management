@@ -20,7 +20,7 @@ export function Field({ label, required, skip, onSkip, error, hint, className, c
     <div className={`flex flex-col gap-1.5 ${className ?? ''}`}>
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {label} {required && <span className="text-red-500" aria-label="required">★</span>}
+          {label} {required && <span className="text-red-500">*</span>}
         </label>
         {skip && onSkip && (
           <button
