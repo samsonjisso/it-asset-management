@@ -116,6 +116,17 @@ export interface PcFormFields {
   created_by?: string | null;
 }
 
+export interface IpFormFields {
+  id: string;
+  base_fields?: string | null;
+  required_base_fields?: string | null;
+  field_labels?: string | null;
+  fields?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
 export interface LicenseType {
   id: string;
   code: string;
@@ -497,6 +508,7 @@ export interface IPAddress {
   patch_panel_label?: string | null;
   status: 'unassigned' | 'assigned' | 'reserved' | 'available' | 'decommissioned';
   notes?: string | null;
+  extra_data?: string | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;

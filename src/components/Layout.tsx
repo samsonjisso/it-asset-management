@@ -135,6 +135,7 @@ const customizationItems: NavItem[] = [
   { id: 'device_types', label: 'Device Types', icon: <HardDrive size={19} />, roles: ['admin', 'audit'] },
   { id: 'reminder_types', label: 'Reminder Types', icon: <BellRing size={19} />, roles: ['admin', 'audit'] },
   { id: 'pc_fields', label: 'PC Registration Fields', icon: <Monitor size={19} />, roles: ['admin', 'audit'] },
+  { id: 'ip_fields', label: 'IP Registration Fields', icon: <Network size={19} />, roles: ['admin', 'audit'] },
   { id: 'ip_subnets', label: 'IP Subnets', icon: <Network size={19} />, roles: ['admin', 'audit'] },
   { id: 'asset_models', label: 'Asset Models', icon: <Boxes size={19} />, roles: ['admin', 'audit'] },
   { id: 'vendors', label: 'Vendors', icon: <Truck size={19} />, roles: ['admin', 'audit'] },

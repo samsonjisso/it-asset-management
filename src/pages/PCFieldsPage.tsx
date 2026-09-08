@@ -59,7 +59,6 @@ export function PCFieldsPage() {
   }, [loadData]);
 
   const handleSave = async () => {
-    if (!config) return;
     setSaving(true);
     const payload = {
       base_fields: JSON.stringify(baseFields),
@@ -67,13 +66,19 @@ export function PCFieldsPage() {
       field_labels: JSON.stringify(fieldLabels),
       fields: JSON.stringify(extraFields),
     };
-    const { error } = await supabase.from('pc_form_fields').update(payload).eq('id', config.id);
+    const { data, error } = config
+      ? await supabase.from('pc_form_fields').update(payload).eq('id', config.id)
+      : await supabase.from('pc_form_fields').insert({
+          id: crypto.randomUUID(),
+          ...payload,
+        });
     setSaving(false);
     if (error) {
       toast(error.message, 'error');
     } else {
       toast('PC registration fields updated', 'success');
-      loadData();
+      if (data) setConfig(data as PcFormFields);
+      await loadData();
     }
   };
 

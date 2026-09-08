@@ -1,4 +1,4 @@
-import type { ZodSchema, AnyZodObject } from 'zod';
+import type { ZodObject, z } from 'zod';
 import { ApiError } from '@/server/lib/http';
 
 const XSS_PATTERNS = [
@@ -23,7 +23,7 @@ function assertSafeInput(value: unknown, path = 'body'): void {
  * 400 ApiError with a readable message on failure — the single place
  * every route's "sanitize + validate req.body" requirement is met.
  */
-export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<T> {
+export async function parseBody<T>(req: Request, schema: z.ZodType<T>): Promise<T> {
   let raw: unknown;
   try {
     raw = await req.json();
@@ -35,7 +35,7 @@ export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<
   if (!result.success) {
     const first = result.error.issues[0];
     const path = first?.path?.join('.');
-    throw new ApiError(400, path ? `${path}: ${first.message}` : first?.message || 'Invalid request body');
+    throw new ApiError(400, path ? `${path}: ${first?.message}` : first?.message || 'Invalid request body');
   }
   return result.data;
 }
@@ -47,7 +47,7 @@ export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<
  * every schema actually passed here (see server/validators/*) is a
  * `z.object(...)`, including the lookup-table `passthroughSchema`.
  */
-export async function parsePartialBody<T extends AnyZodObject>(req: Request, schema: T): Promise<Partial<import('zod').infer<T>>> {
+export async function parsePartialBody<T extends ZodObject<any>>(req: Request, schema: T): Promise<Partial<import('zod').infer<T>>> {
   let raw: unknown;
   try {
     raw = await req.json();
@@ -61,11 +61,11 @@ export async function parsePartialBody<T extends AnyZodObject>(req: Request, sch
     const path = first?.path?.join('.');
     throw new ApiError(400, path ? `${path}: ${first.message}` : first?.message || 'Invalid request body');
   }
-  return result.data as Partial<T>;
+  return result.data as Partial<z.infer<T>>;
 }
 
 /** Validates a URLSearchParams object against a Zod schema (query-string params). */
-export function parseQuery<T>(searchParams: URLSearchParams, schema: ZodSchema<T>): T {
+export function parseQuery<T>(searchParams: URLSearchParams, schema: z.ZodType<T>): T {
   const obj = Object.fromEntries(searchParams.entries());
   assertSafeInput(obj, 'query');
   const result = schema.safeParse(obj);

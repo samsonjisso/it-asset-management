@@ -273,6 +273,18 @@ CREATE TABLE IF NOT EXISTS pc_form_fields (
   CONSTRAINT fk_pc_form_fields_created_by FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS ip_form_fields (
+  id CHAR(36) PRIMARY KEY,
+  base_fields JSON NOT NULL,
+  required_base_fields JSON NOT NULL,
+  field_labels JSON NOT NULL,
+  fields JSON NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  created_by CHAR(36) NULL,
+  CONSTRAINT fk_ip_form_fields_created_by FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ---------------------------------------------------------------------
 -- IP Address Management (created before pc/devices, which reference it)
 -- ---------------------------------------------------------------------
@@ -289,6 +301,7 @@ CREATE TABLE IF NOT EXISTS ip_addresses (
   patch_panel_label VARCHAR(100) NULL,
   status ENUM('unassigned', 'assigned', 'reserved', 'available', 'decommissioned') NOT NULL DEFAULT 'unassigned',
   notes TEXT NULL,
+  extra_data JSON NULL,
   registered_by CHAR(36) NULL,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),

@@ -11,4 +11,5 @@ export const ipAddressSchema = z.looseObject({
   subnet_id: z.uuid().optional(),
   ip_address: z.string().trim().min(1).max(45).optional(),
   notes: z.string().max(5000).nullable().optional(),
+  extra_data: z.record(z.string(), z.unknown()).nullable().optional(),
 });

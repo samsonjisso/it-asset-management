@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo, JSX } from 'react';
-import { supabase, IPAddress, IPSubnet, Department, PatchLevel, DirectoryUser } from '../lib/supabase';
+import { useRouter } from 'next/navigation';
+import { supabase, IPAddress, IPSubnet, Department, PatchLevel, DirectoryUser, IpFormFields, DeviceTypeField } from '../lib/supabase';
 import { pingIp, PingResult, fetchProfileDirectory } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -44,6 +45,9 @@ import {
   Archive,
 } from 'lucide-react';
 import { ImportModal, ImportColumn } from '../components/ImportModal';
+import { DynamicField } from '../components/DynamicField';
+import { validateFieldValue } from '../lib/deviceFieldValues';
+import { parseIpBaseFields, parseIpExtraFields, parseIpFieldLabels, parseIpRequiredBaseFields, IP_BASE_FIELD_META } from '../lib/ipFormFields';
 
 // 'unassigned' is the default a new record starts at, but it is a
 // placeholder rather than a valid end state - Register New IP Address
@@ -84,11 +88,13 @@ const emptyForm = {
   patch_panel_label: '',
   status: 'unassigned' as IPAddress['status'],
   notes: '',
+  extra_data: {} as Record<string, string>,
 };
 
 const IPV4_RE = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
 
 export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number } = {}) {
+  const router = useRouter();
   const { canWrite, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<IPAddress[]>([]);
@@ -102,6 +108,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
   const [viewing, setViewing] = useState<IPAddress | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+  const [ipFormConfig, setIpFormConfig] = useState<IpFormFields | null>(null);
 
   // IP Availability Board - shows every address in a selected subnet
   // and whether it's assigned/used or free, with a live-ping fallback
@@ -115,7 +122,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [ipRes, deptRes, subnetRes, patchPanelRes, employeesRes] = await Promise.all([
+    const [ipRes, deptRes, subnetRes, patchPanelRes, employeesRes, fieldsRes] = await Promise.all([
       supabase.from('ip_addresses').select('*, department:departments(*)').order('ip_address', { ascending: true }),
       supabase.from('departments').select('*').order('name'),
       supabase.from('ip_subnets').select('*').order('prefix'),
@@ -123,18 +130,26 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
       // Resolves registered_by to a name for "Registered By" in the
       // detail view — see GET /profiles/directory.
       fetchProfileDirectory(),
+      supabase.from('ip_form_fields').select('*'),
     ]);
     if (ipRes.data) setRecords(ipRes.data as IPAddress[]);
     if (deptRes.data) setDepartments(deptRes.data as Department[]);
     if (subnetRes.data) setSubnets(subnetRes.data as IPSubnet[]);
     if (patchPanelRes.data) setPatchPanelLabels(patchPanelRes.data as PatchLevel[]);
     if (employeesRes.data) setEmployees(employeesRes.data as DirectoryUser[]);
+    if (fieldsRes.data) setIpFormConfig((fieldsRes.data as IpFormFields[])[0] ?? null);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const baseFields = useMemo(() => parseIpBaseFields(ipFormConfig), [ipFormConfig]);
+  const requiredBaseFields = useMemo(() => parseIpRequiredBaseFields(ipFormConfig), [ipFormConfig]);
+  const fieldLabels = useMemo(() => parseIpFieldLabels(ipFormConfig), [ipFormConfig]);
+  const extraFields = useMemo(() => parseIpExtraFields(ipFormConfig), [ipFormConfig]);
+  const fieldLabel = (key: string) => fieldLabels[key] ?? IP_BASE_FIELD_META[key]?.label ?? key;
 
   // Only subnets shaped as a full three-octet prefix (e.g. "10.6.13.",
   // equivalent to a /24) can have their valid addresses enumerated —
@@ -161,6 +176,15 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
 
   const openEdit = (rec: IPAddress) => {
     setEditing(rec);
+    let extraData: Record<string, string> = {};
+    if (rec.extra_data) {
+      try {
+        const parsed = typeof rec.extra_data === 'string' ? JSON.parse(rec.extra_data) : rec.extra_data;
+        if (parsed && typeof parsed === 'object') extraData = parsed as Record<string, string>;
+      } catch {
+        extraData = {};
+      }
+    }
     setForm({
       subnet_id: rec.subnet_id ?? matchSubnet(rec.ip_address, subnets)?.id ?? '',
       ip_address: rec.ip_address,
@@ -172,25 +196,28 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
       patch_panel_label: rec.patch_panel_label ?? '',
       status: rec.status,
       notes: rec.notes ?? '',
+      extra_data: extraData,
     });
     setModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const requiredFields: [keyof typeof form, string][] = [
       ['subnet_id', 'IP Subnet'],
       ['ip_address', 'IP Address'],
-      ['hostname', 'Hostname'],
-      ['department_id', 'Department / Branch'],
-      ['mac_address', 'MAC Address'],
-      ['patch_panel_label', 'Patch Panel Label / Number'],
-      ['access_switch_port', 'Access Switch Port / Interface Number'],
-      ['ip_owner', 'IP Address Owner (Employee)'],
+      ...requiredBaseFields.map((key) => [key as keyof typeof form, fieldLabel(key)] as [keyof typeof form, string]),
     ];
     for (const [key, label] of requiredFields) {
       if (!String(form[key] ?? '').trim()) {
         toast(`${label} is required`, 'error');
+        return;
+      }
+    }
+    for (const field of extraFields) {
+      const error = validateFieldValue(field, form.extra_data[field.key]);
+      if (error) {
+        toast(error, 'error');
         return;
       }
     }
@@ -223,27 +250,32 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
       toast('This IP Address is already registered/assigned. Choose a different available address.', 'error');
       return;
     }
-    if (!isValidMac(form.mac_address)) {
+    if (form.mac_address && !isValidMac(form.mac_address)) {
       toast('MAC Address must look like 00:1A:2B:3C:4D:5E', 'error');
       return;
     }
-    if (!isValidHostname(form.hostname)) {
+    if (form.hostname && !isValidHostname(form.hostname)) {
       toast('Hostname may only contain letters, numbers, hyphens and dots (e.g., PC-HQ-001)', 'error');
       return;
     }
-    const hostnameConflict = findHostnameConflict(form.hostname);
+    const hostnameConflict = form.hostname ? findHostnameConflict(form.hostname) : null;
     if (hostnameConflict) {
+      if (!editing) {
+        toast(`Hostname "${form.hostname.trim()}" is already registered. Continue in PC Registration to register this device.`, 'error');
+        router.push(`/pc?create=${Date.now()}&hostname=${encodeURIComponent(form.hostname.trim())}&ip_address=${encodeURIComponent(form.ip_address.trim())}`);
+        return;
+      }
       toast(
         `Hostname "${form.hostname.trim()}" is already registered to ${hostnameConflict.ip_address} (${hostnameConflict.status}). Choose a different hostname, or free it up by marking that record Available/Decommissioned first.`,
         'error'
       );
       return;
     }
-    if (!isValidEmployeeName(form.ip_owner)) {
+    if (form.ip_owner && !isValidEmployeeName(form.ip_owner)) {
       toast('Enter a valid employee name for the IP Address Owner', 'error');
       return;
     }
-    if (!isValidPortLabel(form.access_switch_port)) {
+    if (form.access_switch_port && !isValidPortLabel(form.access_switch_port)) {
       toast('Access Switch Port / Interface Number contains invalid characters', 'error');
       return;
     }
@@ -257,6 +289,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
       access_switch_port: form.access_switch_port.trim(),
       patch_panel_label: form.patch_panel_label.trim(),
       notes: form.notes || null,
+      extra_data: form.extra_data,
       registered_by: profile?.id,
     };
     const { error } = editing
@@ -655,6 +688,10 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
     free: 'bg-green-50 text-green-700 ring-1 ring-green-100 hover:ring-green-400 cursor-pointer',
   };
 
+  const setExtraField = (key: string, value: string) => {
+    setForm((current) => ({ ...current, extra_data: { ...current.extra_data, [key]: value } }));
+  };
+
   const viewSections: DetailSection[] = viewing ? [
     {
       title: 'IP Information',
@@ -827,8 +864,8 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
               />
             </Field>
             <Field
-              label="Hostname"
-              required
+              label={fieldLabel('hostname')}
+              required={requiredBaseFields.includes('hostname')}
               hint={hostnameOptions.length > 0 ? 'Start typing to see hostnames already in the system' : undefined}
             >
               <SearchableCombobox
@@ -842,7 +879,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
                 required
               />
             </Field>
-            <Field label="Department / Branch" required>
+            <Field label={fieldLabel('department_id')} required={requiredBaseFields.includes('department_id')}>
               <SearchableSelect
                 options={departments.map((d) => ({ value: d.id, label: `${d.name}${d.is_branch ? ' (Branch)' : ''}` }))}
                 value={form.department_id}
@@ -854,8 +891,8 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
               />
             </Field>
             <Field
-              label="IP Address Owner (Employee)"
-              required
+              label={fieldLabel('ip_owner')}
+              required={requiredBaseFields.includes('ip_owner')}
               hint={ipOwnerOptions.length > 0 ? 'Start typing to see owners already in the system' : undefined}
             >
               <SearchableCombobox
@@ -869,8 +906,8 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
               />
             </Field>
             <Field
-              label="MAC Address"
-              required
+              label={fieldLabel('mac_address')}
+              required={requiredBaseFields.includes('mac_address')}
               hint={macOptions.length > 0 ? 'Start typing to see MAC addresses already in the system' : undefined}
             >
               <SearchableCombobox
@@ -884,7 +921,7 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
                 required
               />
             </Field>
-            <Field label="Access Switch Port / Interface Number" required>
+            <Field label={fieldLabel('access_switch_port')} required={requiredBaseFields.includes('access_switch_port')}>
               <TextInput
                 value={form.access_switch_port}
                 onChange={(e) => setForm({ ...form, access_switch_port: e.target.value })}
@@ -895,8 +932,8 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
               />
             </Field>
             <Field
-              label="Patch Panel Label / Number"
-              required
+              label={fieldLabel('patch_panel_label')}
+              required={requiredBaseFields.includes('patch_panel_label')}
               hint={
                 patchPanelLabels.length === 0
                   ? 'No values defined yet - add one under Customization > Patch / Level Numbers.'
@@ -925,8 +962,31 @@ export function IPManagementPage({ autoOpenCreate }: { autoOpenCreate?: number }
               </SelectInput>
             </Field>
           </div>
-          <Field label="Notes">
-            <TextArea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Additional notes..." />
+          {extraFields.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Additional Details</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {extraFields.map((field) => (
+                  <Field
+                    key={field.key}
+                    label={field.label}
+                    required={field.required}
+                    className={field.type === 'multiselect' || field.type === 'radio' || field.type === 'long_text' ? 'sm:col-span-2' : undefined}
+                  >
+                    <DynamicField
+                      field={field}
+                      value={form.extra_data[field.key] ?? ''}
+                      onChange={(value) => setExtraField(field.key, value)}
+                      departments={departments}
+                      employees={employees}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </div>
+          )}
+          <Field label={fieldLabel('notes')} required={requiredBaseFields.includes('notes')}>
+            <TextArea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder={IP_BASE_FIELD_META.notes?.placeholder ?? 'Additional notes...'} required={requiredBaseFields.includes('notes')} />
           </Field>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
