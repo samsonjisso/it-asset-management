@@ -6,21 +6,25 @@ import { getRowById, updateRow, deleteRow } from '@/server/controllers/crudEngin
 import { accessSwitchesConfig } from '@/server/controllers/crudConfig';
 import { labelCodeSchema } from '@/server/validators/common';
 
-export const GET = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  
   const auth = await requireAuth(req);
-  const row = await getRowById(accessSwitchesConfig, auth, params.id);
+  const { id } = await params;
+  const row = await getRowById(accessSwitchesConfig, auth, id);
   return jsonOk(row, { headers: NO_STORE_HEADERS });
 });
 
-export const PATCH = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const PATCH = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }>  }) => {
   const auth = await requireAuth(req);
   const body = await parsePartialBody(req, labelCodeSchema);
-  const row = await updateRow(accessSwitchesConfig, auth, params.id, body as Record<string, unknown>);
+  const { id } = await params;
+  const row = await updateRow(accessSwitchesConfig, auth, id, body as Record<string, unknown>);
   return jsonOk(row, { headers: NO_STORE_HEADERS });
 });
 
-export const DELETE = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const DELETE = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const auth = await requireAuth(req);
-  await deleteRow(accessSwitchesConfig, auth, params.id);
+  const { id } = await params;
+  await deleteRow(accessSwitchesConfig, auth, id);
   return jsonOk({ ok: true }, { headers: NO_STORE_HEADERS });
 });

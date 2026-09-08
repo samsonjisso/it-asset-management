@@ -20,7 +20,7 @@ export const MODULE_KEYS = [
   'departments', 'license_types', 'server_owners', 'device_owners',
   'server_types', 'server_environments', 'os_releases', 'host_locations',
   'floors', 'access_switches', 'access_switch_ips', 'patch_levels',
-  'device_types', 'reminder_types', 'pc_fields', 'ip_subnets', 'asset_models', 'vendors',
+  'device_types', 'reminder_types', 'pc_fields', 'ip_fields', 'ip_subnets', 'asset_models', 'vendors',
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
@@ -33,6 +33,7 @@ export const TABLE_MODULE_MAP: Record<string, ModuleKey> = {
   license_subtypes: 'license_types',
   device_types: 'device_types',
   pc_form_fields: 'pc_fields',
+  ip_form_fields: 'ip_fields',
   device_owners: 'device_owners',
   server_owners: 'server_owners',
   server_types: 'server_types',

@@ -54,6 +54,41 @@ async function main() {
     }
   }
 
+  // CREATE TABLE IF NOT EXISTS does not repair an older pc_form_fields
+  // table. Ensure every field used by the PC customization page exists.
+  const [pcColumns] = await connection.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'pc_form_fields'`,
+    [dbName]
+  );
+  const existingPcColumns = new Set(pcColumns.map((row) => row.COLUMN_NAME));
+  const pcJsonColumns = ['base_fields', 'required_base_fields', 'field_labels', 'fields'];
+  for (const column of pcJsonColumns) {
+    if (existingPcColumns.has(column)) continue;
+    await connection.query(`ALTER TABLE pc_form_fields ADD COLUMN \`${column}\` JSON NULL`);
+    await connection.query(`UPDATE pc_form_fields SET \`${column}\` = ? WHERE \`${column}\` IS NULL`, ['[]']);
+    await connection.query(`ALTER TABLE pc_form_fields MODIFY COLUMN \`${column}\` JSON NOT NULL`);
+  }
+
+  const [ipConfigColumns] = await connection.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'ip_form_fields'`,
+    [dbName]
+  );
+  const existingIpConfigColumns = new Set(ipConfigColumns.map((row) => row.COLUMN_NAME));
+  for (const column of pcJsonColumns) {
+    if (existingIpConfigColumns.has(column)) continue;
+    await connection.query(`ALTER TABLE ip_form_fields ADD COLUMN \`${column}\` JSON NULL`);
+    await connection.query(`UPDATE ip_form_fields SET \`${column}\` = ? WHERE \`${column}\` IS NULL`, ['[]']);
+    await connection.query(`ALTER TABLE ip_form_fields MODIFY COLUMN \`${column}\` JSON NOT NULL`);
+  }
+
+  const [ipAddressColumns] = await connection.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'ip_addresses'`,
+    [dbName]
+  );
+  if (!new Set(ipAddressColumns.map((row) => row.COLUMN_NAME)).has('extra_data')) {
+    await connection.query('ALTER TABLE ip_addresses ADD COLUMN extra_data JSON NULL');
+  }
+
   console.log(`Schema applied to database "${dbName}".`);
   await connection.end();
 }

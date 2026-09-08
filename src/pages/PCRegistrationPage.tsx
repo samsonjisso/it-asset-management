@@ -1,69 +1,103 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, ReactNode, Fragment } from 'react';
 import {
-  supabase, PCRegistration, Department, AssetModel, Floor, AccessSwitch, AccessSwitchIp,
-  PatchLevel, License, LicenseType, PcFormFields, DirectoryUser,
-} from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { DataTable, Column } from '../components/DataTable';
-import { Modal } from '../components/Modal';
-import { DetailsModal, DetailSection } from '../components/DetailsModal';
-import { Field, TextInput, TextArea, Button } from '../components/FormControls';
-import { LicensePicker } from '../components/LicensePicker';
-import { SearchableSelect } from '../components/SearchableSelect';
-import { isValidIPv4, isValidMac, IPV4_PATTERN, MAC_PATTERN } from '../lib/validation';
-import { ImageInput } from '../components/ImageInput';
-import { ZoomImage } from '../components/ZoomImage';
-import { DynamicField } from '../components/DynamicField';
-import { validateFieldValue, formatFieldValueForDisplay } from '../lib/deviceFieldValues';
-import { fetchProfileDirectory } from '../lib/api';
-import { Plus, Pencil, Trash2, Eye, Monitor, Download, Upload } from 'lucide-react';
-import { ImportModal, ImportColumn } from '../components/ImportModal';
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  ReactNode,
+  Fragment,
+} from "react";
+import {
+  supabase,
+  PCRegistration,
+  Department,
+  AssetModel,
+  Floor,
+  AccessSwitch,
+  AccessSwitchIp,
+  PatchLevel,
+  License,
+  LicenseType,
+  PcFormFields,
+  DirectoryUser,
+} from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/Toast";
+import { DataTable, Column } from "../components/DataTable";
+import { Modal } from "../components/Modal";
+import { DetailsModal, DetailSection } from "../components/DetailsModal";
+import { Field, TextInput, TextArea, Button } from "../components/FormControls";
+import { LicensePicker } from "../components/LicensePicker";
+import { SearchableSelect } from "../components/SearchableSelect";
+import {
+  isValidIPv4,
+  isValidMac,
+  IPV4_PATTERN,
+  MAC_PATTERN,
+} from "../lib/validation";
+import { ImageInput } from "../components/ImageInput";
+import { ZoomImage } from "../components/ZoomImage";
+import { DynamicField } from "../components/DynamicField";
+import {
+  validateFieldValue,
+  formatFieldValueForDisplay,
+} from "../lib/deviceFieldValues";
+import { fetchProfileDirectory } from "../lib/api";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  Monitor,
+  Download,
+  Upload,
+} from "lucide-react";
+import { ImportModal, ImportColumn } from "../components/ImportModal";
 import {
   PC_BASE_FIELD_META,
   parsePcBaseFields,
   parsePcRequiredBaseFields,
   parsePcFieldLabels,
   parsePcExtraFields,
-} from '../lib/pcFormFields';
+} from "../lib/pcFormFields";
 
 function parsePcExtraData(rec?: PCRegistration | null): Record<string, string> {
   if (!rec?.extra_data) return {};
   try {
     const parsed = JSON.parse(rec.extra_data);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
 }
 
 const emptyForm = {
-  hostname: '',
-  monitor_serial: '',
-  asset_tag: '',
-  service_tag: '',
-  mac_address: '',
-  license_id: '',
+  hostname: "",
+  monitor_serial: "",
+  asset_tag: "",
+  service_tag: "",
+  mac_address: "",
+  license_id: "",
   // Manual fallback for Product Key / License when the entry isn't in
   // License Management yet - see LicensePicker's manual-entry mode.
   // Mutually exclusive with license_id; whichever was set last wins.
-  product_key: '',
-  cpu: '',
-  memory_detail: '',
-  generation_detail: '',
-  ip_address: '',
-  owner_name: '',
-  department_id: '',
-  floor_number: '',
-  switch_port_number: '',
-  access_switch_ip: '',
-  access_switch_name: '',
-  patch_level_number: '',
-  model_id: '',
+  product_key: "",
+  cpu: "",
+  memory_detail: "",
+  generation_detail: "",
+  ip_address: "",
+  owner_name: "",
+  department_id: "",
+  floor_number: "",
+  switch_port_number: "",
+  access_switch_ip: "",
+  access_switch_name: "",
+  patch_level_number: "",
+  model_id: "",
   image: null as string | null,
-  notes: '',
+  notes: "",
   extra_data: {} as Record<string, string>,
 };
 
@@ -74,9 +108,25 @@ type FormState = typeof emptyForm;
 // field-rendering switch below and the generic required-field check
 // in handleSave can both be driven by the same string[] key list
 // (pc_form_fields.base_fields) instead of hardcoded JSX order.
-type TextFieldKey = 'monitor_serial' | 'asset_tag' | 'service_tag' | 'cpu' | 'memory_detail' | 'generation_detail' | 'owner_name' | 'switch_port_number';
+type TextFieldKey =
+  | "monitor_serial"
+  | "asset_tag"
+  | "service_tag"
+  | "cpu"
+  | "memory_detail"
+  | "generation_detail"
+  | "owner_name"
+  | "switch_port_number";
 
-export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number } = {}) {
+export function PCRegistrationPage({
+  autoOpenCreate,
+  initialHostname,
+  initialIpAddress,
+}: {
+  autoOpenCreate?: number;
+  initialHostname?: string;
+  initialIpAddress?: string;
+} = {}) {
   const { canWrite, profile } = useAuth();
   const { toast } = useToast();
   const [records, setRecords] = useState<PCRegistration[]>([]);
@@ -87,7 +137,9 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   const [accessSwitchIps, setAccessSwitchIps] = useState<AccessSwitchIp[]>([]);
   const [patchLevels, setPatchLevels] = useState<PatchLevel[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
-  const [licenseTypeOptions, setLicenseTypeOptions] = useState<LicenseType[]>([]);
+  const [licenseTypeOptions, setLicenseTypeOptions] = useState<LicenseType[]>(
+    [],
+  );
   const [pcFormConfig, setPcFormConfig] = useState<PcFormFields | null>(null);
   const [employees, setEmployees] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,17 +151,35 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [pcRes, deptRes, modelsRes, floorsRes, switchesRes, switchIpsRes, patchLevelsRes, licensesRes, licenseTypesRes, pcFieldsRes, employeesRes] = await Promise.all([
-      supabase.from('pc_registrations').select('*, department:departments(*)').order('created_at', { ascending: false }),
-      supabase.from('departments').select('*').order('name'),
-      supabase.from('asset_models').select('*').order('name'),
-      supabase.from('floors').select('*').order('position'),
-      supabase.from('access_switches').select('*').order('label'),
-      supabase.from('access_switch_ips').select('*').order('label'),
-      supabase.from('patch_levels').select('*').order('label'),
-      supabase.from('licenses').select('*').order('created_at', { ascending: false }),
-      supabase.from('license_types').select('*').order('label'),
-      supabase.from('pc_form_fields').select('*'),
+    const [
+      pcRes,
+      deptRes,
+      modelsRes,
+      floorsRes,
+      switchesRes,
+      switchIpsRes,
+      patchLevelsRes,
+      licensesRes,
+      licenseTypesRes,
+      pcFieldsRes,
+      employeesRes,
+    ] = await Promise.all([
+      supabase
+        .from("pc_registrations")
+        .select("*, department:departments(*)")
+        .order("created_at", { ascending: false }),
+      supabase.from("departments").select("*").order("name"),
+      supabase.from("asset_models").select("*").order("name"),
+      supabase.from("floors").select("*").order("position"),
+      supabase.from("access_switches").select("*").order("label"),
+      supabase.from("access_switch_ips").select("*").order("label"),
+      supabase.from("patch_levels").select("*").order("label"),
+      supabase
+        .from("licenses")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      supabase.from("license_types").select("*").order("label"),
+      supabase.from("pc_form_fields").select("*"),
       // Every viewer needs this to resolve who registered a record
       // ("Registered By" in the detail view), not just writers filling
       // in the Employee/User Selection custom field picker.
@@ -117,14 +187,21 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     ]);
     if (pcRes.data) setRecords(pcRes.data as PCRegistration[]);
     if (deptRes.data) setDepartments(deptRes.data as Department[]);
-    if (modelsRes.data) setPcModels((modelsRes.data as AssetModel[]).filter((m) => m.target === 'pc'));
+    if (modelsRes.data)
+      setPcModels(
+        (modelsRes.data as AssetModel[]).filter((m) => m.target === "pc"),
+      );
     if (floorsRes.data) setFloors(floorsRes.data as Floor[]);
     if (switchesRes.data) setAccessSwitches(switchesRes.data as AccessSwitch[]);
-    if (switchIpsRes.data) setAccessSwitchIps(switchIpsRes.data as AccessSwitchIp[]);
-    if (patchLevelsRes.data) setPatchLevels(patchLevelsRes.data as PatchLevel[]);
+    if (switchIpsRes.data)
+      setAccessSwitchIps(switchIpsRes.data as AccessSwitchIp[]);
+    if (patchLevelsRes.data)
+      setPatchLevels(patchLevelsRes.data as PatchLevel[]);
     if (licensesRes.data) setLicenses(licensesRes.data as License[]);
-    if (licenseTypesRes.data) setLicenseTypeOptions(licenseTypesRes.data as LicenseType[]);
-    if (pcFieldsRes.data) setPcFormConfig((pcFieldsRes.data as PcFormFields[])[0] ?? null);
+    if (licenseTypesRes.data)
+      setLicenseTypeOptions(licenseTypesRes.data as LicenseType[]);
+    if (pcFieldsRes.data)
+      setPcFormConfig((pcFieldsRes.data as PcFormFields[])[0] ?? null);
     if (employeesRes.data) setEmployees(employeesRes.data as DirectoryUser[]);
     setLoading(false);
   }, []);
@@ -137,26 +214,51 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // fields, driven entirely by the admin-configurable pc_form_fields
   // row (Customization > PC Registration Fields) instead of being
   // hardcoded here.
-  const baseFields = useMemo(() => parsePcBaseFields(pcFormConfig), [pcFormConfig]);
-  const requiredBaseFields = useMemo(() => parsePcRequiredBaseFields(pcFormConfig), [pcFormConfig]);
-  const fieldLabels = useMemo(() => parsePcFieldLabels(pcFormConfig), [pcFormConfig]);
-  const extraFields = useMemo(() => parsePcExtraFields(pcFormConfig), [pcFormConfig]);
-  const fieldLabel = useCallback((key: string) => fieldLabels[key] ?? PC_BASE_FIELD_META[key]?.label ?? key, [fieldLabels]);
-  const fieldPlaceholder = useCallback((key: string) => PC_BASE_FIELD_META[key]?.placeholder, []);
+  const baseFields = useMemo(
+    () => parsePcBaseFields(pcFormConfig),
+    [pcFormConfig],
+  );
+  const requiredBaseFields = useMemo(
+    () => parsePcRequiredBaseFields(pcFormConfig),
+    [pcFormConfig],
+  );
+  const fieldLabels = useMemo(
+    () => parsePcFieldLabels(pcFormConfig),
+    [pcFormConfig],
+  );
+  const extraFields = useMemo(
+    () => parsePcExtraFields(pcFormConfig),
+    [pcFormConfig],
+  );
+  const fieldLabel = useCallback(
+    (key: string) => fieldLabels[key] ?? PC_BASE_FIELD_META[key]?.label ?? key,
+    [fieldLabels],
+  );
+  const fieldPlaceholder = useCallback(
+    (key: string) => PC_BASE_FIELD_META[key]?.placeholder,
+    [],
+  );
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ ...emptyForm });
+    setForm({
+      ...emptyForm,
+      hostname: initialHostname ?? '',
+      ip_address: initialIpAddress ?? '',
+    });
     setModalOpen(true);
   };
 
   const lastAutoOpen = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (autoOpenCreate !== undefined && autoOpenCreate !== lastAutoOpen.current) {
+    if (
+      autoOpenCreate !== undefined &&
+      autoOpenCreate !== lastAutoOpen.current
+    ) {
       lastAutoOpen.current = autoOpenCreate;
       if (canWrite()) openAdd();
     }
-  }, [autoOpenCreate]);
+  }, [autoOpenCreate, initialHostname, initialIpAddress]);
 
   const openView = (rec: PCRegistration) => setViewing(rec);
 
@@ -164,29 +266,29 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     setEditing(rec);
     setForm({
       hostname: rec.hostname,
-      monitor_serial: rec.monitor_serial ?? '',
-      asset_tag: rec.asset_tag ?? '',
-      service_tag: rec.service_tag ?? '',
-      mac_address: rec.mac_address ?? '',
-      license_id: rec.license_id ?? '',
+      monitor_serial: rec.monitor_serial ?? "",
+      asset_tag: rec.asset_tag ?? "",
+      service_tag: rec.service_tag ?? "",
+      mac_address: rec.mac_address ?? "",
+      license_id: rec.license_id ?? "",
       // Only carry the manual product_key forward when there's no
       // linked license - if license_id is set, product_key is just the
       // server-side mirror of that license's key, not a manual entry.
-      product_key: rec.license_id ? '' : rec.product_key ?? '',
-      cpu: rec.cpu ?? '',
-      memory_detail: rec.memory_detail ?? '',
-      generation_detail: rec.generation_detail ?? '',
-      ip_address: rec.ip_address ?? '',
-      owner_name: rec.owner_name ?? '',
-      department_id: rec.department_id ?? '',
-      floor_number: rec.floor_number ?? '',
-      switch_port_number: rec.switch_port_number ?? '',
-      access_switch_ip: rec.access_switch_ip ?? '',
-      access_switch_name: rec.access_switch_name ?? '',
-      patch_level_number: rec.patch_level_number ?? '',
-      model_id: rec.model_id ?? '',
+      product_key: rec.license_id ? "" : (rec.product_key ?? ""),
+      cpu: rec.cpu ?? "",
+      memory_detail: rec.memory_detail ?? "",
+      generation_detail: rec.generation_detail ?? "",
+      ip_address: rec.ip_address ?? "",
+      owner_name: rec.owner_name ?? "",
+      department_id: rec.department_id ?? "",
+      floor_number: rec.floor_number ?? "",
+      switch_port_number: rec.switch_port_number ?? "",
+      access_switch_ip: rec.access_switch_ip ?? "",
+      access_switch_name: rec.access_switch_name ?? "",
+      patch_level_number: rec.patch_level_number ?? "",
+      model_id: rec.model_id ?? "",
       image: rec.image ?? null,
-      notes: rec.notes ?? '',
+      notes: rec.notes ?? "",
       extra_data: parsePcExtraData(rec),
     });
     setModalOpen(true);
@@ -200,7 +302,11 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // already uploaded their own photo for this specific unit).
   const handleSelectModel = (modelId: string) => {
     const model = pcModels.find((m) => m.id === modelId);
-    setForm((f) => ({ ...f, model_id: modelId, image: f.image ?? model?.image ?? null }));
+    setForm((f) => ({
+      ...f,
+      model_id: modelId,
+      image: f.image ?? model?.image ?? null,
+    }));
   };
 
   const selectedDept = departments.find((d) => d.id === form.department_id);
@@ -212,52 +318,81 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       // Asset Tag is always optional - it auto-fills to "N/A" below
       // when left blank, so it can never be enforced as required even
       // if an admin has it flagged that way in the field config.
-      if (key === 'asset_tag') continue;
+      if (key === "asset_tag") continue;
       // Floor/location only applies to Head Office - never required for
       // a branch, regardless of the admin's mandatory/optional setting.
-      if (key === 'floor_number' && isBranch) continue;
+      if (key === "floor_number" && isBranch) continue;
       // license_id can be satisfied either by picking a license or by
       // a manually typed product_key (see LicensePicker manual-entry mode).
-      if (key === 'license_id') {
+      if (key === "license_id") {
         if (!form.license_id.trim() && !form.product_key.trim()) {
-          toast(`${fieldLabel(key)} is required`, 'error');
+          toast(`${fieldLabel(key)} is required`, "error");
           return;
         }
         continue;
       }
-      const value = String((form as Record<string, unknown>)[key] ?? '').trim();
+      const value = String((form as Record<string, unknown>)[key] ?? "").trim();
       if (!value) {
-        toast(`${fieldLabel(key)} is required`, 'error');
+        toast(`${fieldLabel(key)} is required`, "error");
         return;
       }
     }
-    if (baseFields.includes('floor_number') && !isBranch && requiredBaseFields.includes('floor_number') && !form.floor_number.trim()) {
-      toast(`${fieldLabel('floor_number')} is required for Head Office`, 'error');
+    if (
+      baseFields.includes("floor_number") &&
+      !isBranch &&
+      requiredBaseFields.includes("floor_number") &&
+      !form.floor_number.trim()
+    ) {
+      toast(
+        `${fieldLabel("floor_number")} is required for Head Office`,
+        "error",
+      );
       return;
     }
-    if (baseFields.includes('ip_address') && form.ip_address.trim() && !isValidIPv4(form.ip_address)) {
-      toast(`${fieldLabel('ip_address')} must be a valid IPv4 address (e.g., 10.6.13.45)`, 'error');
+    if (
+      baseFields.includes("ip_address") &&
+      form.ip_address.trim() &&
+      !isValidIPv4(form.ip_address)
+    ) {
+      toast(
+        `${fieldLabel("ip_address")} must be a valid IPv4 address (e.g., 10.6.13.45)`,
+        "error",
+      );
       return;
     }
-    if (baseFields.includes('mac_address') && form.mac_address.trim() && !isValidMac(form.mac_address)) {
-      toast(`${fieldLabel('mac_address')} must look like 00:1A:2B:3C:4D:5E`, 'error');
+    if (
+      baseFields.includes("mac_address") &&
+      form.mac_address.trim() &&
+      !isValidMac(form.mac_address)
+    ) {
+      toast(
+        `${fieldLabel("mac_address")} must look like 00:1A:2B:3C:4D:5E`,
+        "error",
+      );
       return;
     }
-    if (baseFields.includes('access_switch_ip') && form.access_switch_ip.trim() && !isValidIPv4(form.access_switch_ip)) {
-      toast(`${fieldLabel('access_switch_ip')} must be a valid IPv4 address (e.g., 10.6.1.103)`, 'error');
+    if (
+      baseFields.includes("access_switch_ip") &&
+      form.access_switch_ip.trim() &&
+      !isValidIPv4(form.access_switch_ip)
+    ) {
+      toast(
+        `${fieldLabel("access_switch_ip")} must be a valid IPv4 address (e.g., 10.6.1.103)`,
+        "error",
+      );
       return;
     }
     for (const f of extraFields) {
       const err = validateFieldValue(f, form.extra_data[f.key]);
       if (err) {
-        toast(err, 'error');
+        toast(err, "error");
         return;
       }
     }
     setSaving(true);
     const payload = {
       ...form,
-      asset_tag: form.asset_tag.trim() || 'N/A',
+      asset_tag: form.asset_tag.trim() || "N/A",
       floor_number: isBranch ? null : form.floor_number || null,
       department_id: form.department_id || null,
       model_id: form.model_id || null,
@@ -266,13 +401,19 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       registered_by: profile?.id,
     };
     const { error } = editing
-      ? await supabase.from('pc_registrations').update(payload).eq('id', editing.id)
-      : await supabase.from('pc_registrations').insert(payload);
+      ? await supabase
+          .from("pc_registrations")
+          .update(payload)
+          .eq("id", editing.id)
+      : await supabase.from("pc_registrations").insert(payload);
     setSaving(false);
     if (error) {
-      toast(error.message, 'error');
+      toast(error.message, "error");
     } else {
-      toast(editing ? 'PC updated successfully' : 'PC registered successfully', 'success');
+      toast(
+        editing ? "PC updated successfully" : "PC registered successfully",
+        "success",
+      );
       setModalOpen(false);
       loadData();
     }
@@ -280,28 +421,67 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
 
   const handleDelete = async (rec: PCRegistration) => {
     if (!confirm(`Delete PC "${rec.hostname}"?`)) return;
-    const { error } = await supabase.from('pc_registrations').delete().eq('id', rec.id);
+    const { error } = await supabase
+      .from("pc_registrations")
+      .delete()
+      .eq("id", rec.id);
     if (error) {
-      toast(error.message, 'error');
+      toast(error.message, "error");
     } else {
-      toast('PC deleted', 'success');
+      toast("PC deleted", "success");
       loadData();
     }
   };
 
   const exportCSV = () => {
-    const headers = ['Asset ID', 'Hostname', 'Monitor Serial', 'Asset Tag', 'Service Tag', 'MAC Address', 'Product Key / License', 'CPU', 'Memory Detail', 'Generation Detail', 'IP Address', 'Owner', 'Department', 'Floor', 'Switch Port', 'Access Switch', 'Patch Level', 'Created At'];
+    const headers = [
+      "Asset ID",
+      "Hostname",
+      "Monitor Serial",
+      "Asset Tag",
+      "Service Tag",
+      "MAC Address",
+      "Product Key / License",
+      "CPU",
+      "Memory Detail",
+      "Generation Detail",
+      "IP Address",
+      "Owner",
+      "Department",
+      "Floor",
+      "Switch Port",
+      "Access Switch",
+      "Patch Level",
+      "Created At",
+    ];
     const rows = records.map((r) => [
-      r.asset_id ?? '', r.hostname, r.monitor_serial ?? '', r.asset_tag ?? '', r.service_tag ?? '', r.mac_address ?? '',
-      r.license?.license_key ?? r.product_key ?? '',
-      r.cpu ?? '', r.memory_detail ?? '', r.generation_detail ?? '', r.ip_address ?? '', r.owner_name ?? '',
-      r.department?.name ?? '', r.department?.is_branch ? 'Branch' : (r.floor_number ?? ''), r.switch_port_number ?? '', r.access_switch_ip ?? '', r.patch_level_number ?? '',
+      r.asset_id ?? "",
+      r.hostname,
+      r.monitor_serial ?? "",
+      r.asset_tag ?? "",
+      r.service_tag ?? "",
+      r.mac_address ?? "",
+      r.license?.license_key ?? r.product_key ?? "",
+      r.cpu ?? "",
+      r.memory_detail ?? "",
+      r.generation_detail ?? "",
+      r.ip_address ?? "",
+      r.owner_name ?? "",
+      r.department?.name ?? "",
+      r.department?.is_branch ? "Branch" : (r.floor_number ?? ""),
+      r.switch_port_number ?? "",
+      r.access_switch_ip ?? "",
+      r.patch_level_number ?? "",
       new Date(r.created_at).toLocaleDateString(),
     ]);
-    const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `pc_registrations_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
@@ -316,117 +496,201 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // covered by the import — those still need to be filled in by editing
   // the record afterwards.
   const [importOpen, setImportOpen] = useState(false);
-  const findByLabel = <T,>(list: T[], getLabel: (t: T) => string, needle: string) =>
-    list.find((x) => getLabel(x).trim().toLowerCase() === needle.trim().toLowerCase());
+  const findByLabel = <T,>(
+    list: T[],
+    getLabel: (t: T) => string,
+    needle: string,
+  ) =>
+    list.find(
+      (x) => getLabel(x).trim().toLowerCase() === needle.trim().toLowerCase(),
+    );
 
   const importColumns: ImportColumn[] = (() => {
     const cols: ImportColumn[] = [];
     const add = (key: string, example?: string) => {
       if (!baseFields.includes(key)) return;
-      cols.push({ key, label: fieldLabel(key), required: key !== 'asset_tag' && requiredBaseFields.includes(key), example });
+      cols.push({
+        key,
+        label: fieldLabel(key),
+        required: key !== "asset_tag" && requiredBaseFields.includes(key),
+        example,
+      });
     };
-    add('hostname', 'PC-HQ-001');
-    add('monitor_serial');
-    add('asset_tag');
-    add('service_tag');
-    add('mac_address', '00:1A:2B:3C:4D:5E');
-    if (baseFields.includes('license_id')) {
-      cols.push({ key: 'license_key', label: 'Product Key / License Key', required: requiredBaseFields.includes('license_id') });
+    add("hostname", "PC-HQ-001");
+    add("monitor_serial");
+    add("asset_tag");
+    add("service_tag");
+    add("mac_address", "00:1A:2B:3C:4D:5E");
+    if (baseFields.includes("license_id")) {
+      cols.push({
+        key: "license_key",
+        label: "Product Key / License Key",
+        required: requiredBaseFields.includes("license_id"),
+      });
     }
-    add('cpu');
-    add('memory_detail');
-    add('generation_detail');
-    add('ip_address', '10.6.13.45');
-    add('owner_name');
-    if (baseFields.includes('department_id')) {
-      cols.push({ key: 'department', label: fieldLabel('department_id'), required: requiredBaseFields.includes('department_id') });
+    add("cpu");
+    add("memory_detail");
+    add("generation_detail");
+    add("ip_address", "10.6.13.45");
+    add("owner_name");
+    if (baseFields.includes("department_id")) {
+      cols.push({
+        key: "department",
+        label: fieldLabel("department_id"),
+        required: requiredBaseFields.includes("department_id"),
+      });
     }
-    if (baseFields.includes('floor_number')) {
-      cols.push({ key: 'floor_number', label: fieldLabel('floor_number'), required: false });
+    if (baseFields.includes("floor_number")) {
+      cols.push({
+        key: "floor_number",
+        label: fieldLabel("floor_number"),
+        required: false,
+      });
     }
-    add('switch_port_number');
-    add('access_switch_name');
-    add('access_switch_ip');
-    add('patch_level_number');
-    if (baseFields.includes('model_id')) {
-      cols.push({ key: 'model', label: 'Model', required: false });
+    add("switch_port_number");
+    add("access_switch_name");
+    add("access_switch_ip");
+    add("patch_level_number");
+    if (baseFields.includes("model_id")) {
+      cols.push({ key: "model", label: "Model", required: false });
     }
-    cols.push({ key: 'notes', label: 'Notes', required: false });
+    cols.push({ key: "notes", label: "Notes", required: false });
     return cols;
   })();
 
   const validateImportRow = (raw: Record<string, string>) => {
     const preview: Record<string, string> = { ...raw };
     const errors: string[] = [];
-    const dept = raw.department ? findByLabel(departments, (d) => d.name, raw.department) : undefined;
-    if (baseFields.includes('department_id')) {
-      if (requiredBaseFields.includes('department_id') && !raw.department) errors.push(`${fieldLabel('department_id')} is required`);
-      else if (raw.department && !dept) errors.push(`Department "${raw.department}" not found`);
+    const dept = raw.department
+      ? findByLabel(departments, (d) => d.name, raw.department)
+      : undefined;
+    if (baseFields.includes("department_id")) {
+      if (requiredBaseFields.includes("department_id") && !raw.department)
+        errors.push(`${fieldLabel("department_id")} is required`);
+      else if (raw.department && !dept)
+        errors.push(`Department "${raw.department}" not found`);
     }
     const rowIsBranch = !!dept?.is_branch;
-    if (baseFields.includes('floor_number') && !rowIsBranch && requiredBaseFields.includes('floor_number') && !raw.floor_number) {
-      errors.push(`${fieldLabel('floor_number')} is required for Head Office`);
+    if (
+      baseFields.includes("floor_number") &&
+      !rowIsBranch &&
+      requiredBaseFields.includes("floor_number") &&
+      !raw.floor_number
+    ) {
+      errors.push(`${fieldLabel("floor_number")} is required for Head Office`);
     }
     let floorValue: string | null = null;
-    if (baseFields.includes('floor_number') && !rowIsBranch && raw.floor_number) {
+    if (
+      baseFields.includes("floor_number") &&
+      !rowIsBranch &&
+      raw.floor_number
+    ) {
       const floor = findByLabel(floors, (f) => f.label, raw.floor_number);
       if (!floor) errors.push(`Floor "${raw.floor_number}" not found`);
       else floorValue = floor.label;
     }
-    for (const key of ['hostname', 'service_tag', 'cpu', 'memory_detail', 'generation_detail', 'owner_name', 'switch_port_number']) {
-      if (baseFields.includes(key) && requiredBaseFields.includes(key) && !raw[key]) errors.push(`${fieldLabel(key)} is required`);
+    for (const key of [
+      "hostname",
+      "service_tag",
+      "cpu",
+      "memory_detail",
+      "generation_detail",
+      "owner_name",
+      "switch_port_number",
+    ]) {
+      if (
+        baseFields.includes(key) &&
+        requiredBaseFields.includes(key) &&
+        !raw[key]
+      )
+        errors.push(`${fieldLabel(key)} is required`);
     }
-    if (raw.ip_address && !isValidIPv4(raw.ip_address)) errors.push(`${fieldLabel('ip_address')} must be a valid IPv4 address`);
-    if (raw.mac_address && !isValidMac(raw.mac_address)) errors.push(`${fieldLabel('mac_address')} must look like 00:1A:2B:3C:4D:5E`);
+    if (raw.ip_address && !isValidIPv4(raw.ip_address))
+      errors.push(`${fieldLabel("ip_address")} must be a valid IPv4 address`);
+    if (raw.mac_address && !isValidMac(raw.mac_address))
+      errors.push(
+        `${fieldLabel("mac_address")} must look like 00:1A:2B:3C:4D:5E`,
+      );
     let accessSwitchName: string | null = null;
-    if (baseFields.includes('access_switch_name') && raw.access_switch_name) {
-      const sw = findByLabel(accessSwitches, (s) => s.label, raw.access_switch_name);
-      if (!sw) errors.push(`Access Switch "${raw.access_switch_name}" not found`);
+    if (baseFields.includes("access_switch_name") && raw.access_switch_name) {
+      const sw = findByLabel(
+        accessSwitches,
+        (s) => s.label,
+        raw.access_switch_name,
+      );
+      if (!sw)
+        errors.push(`Access Switch "${raw.access_switch_name}" not found`);
       else accessSwitchName = sw.label;
-    } else if (baseFields.includes('access_switch_name') && requiredBaseFields.includes('access_switch_name')) {
-      errors.push(`${fieldLabel('access_switch_name')} is required`);
+    } else if (
+      baseFields.includes("access_switch_name") &&
+      requiredBaseFields.includes("access_switch_name")
+    ) {
+      errors.push(`${fieldLabel("access_switch_name")} is required`);
     }
     let accessSwitchIp: string | null = null;
-    if (baseFields.includes('access_switch_ip') && raw.access_switch_ip) {
-      const ip = findByLabel(accessSwitchIps, (s) => s.label, raw.access_switch_ip);
-      if (!ip) errors.push(`Access Switch IP "${raw.access_switch_ip}" not found`);
+    if (baseFields.includes("access_switch_ip") && raw.access_switch_ip) {
+      const ip = findByLabel(
+        accessSwitchIps,
+        (s) => s.label,
+        raw.access_switch_ip,
+      );
+      if (!ip)
+        errors.push(`Access Switch IP "${raw.access_switch_ip}" not found`);
       else accessSwitchIp = ip.label;
-    } else if (baseFields.includes('access_switch_ip') && requiredBaseFields.includes('access_switch_ip')) {
-      errors.push(`${fieldLabel('access_switch_ip')} is required`);
+    } else if (
+      baseFields.includes("access_switch_ip") &&
+      requiredBaseFields.includes("access_switch_ip")
+    ) {
+      errors.push(`${fieldLabel("access_switch_ip")} is required`);
     }
     let patchLevel: string | null = null;
-    if (baseFields.includes('patch_level_number') && raw.patch_level_number) {
-      const pl = findByLabel(patchLevels, (p) => p.label, raw.patch_level_number);
-      if (!pl) errors.push(`Patch / Level Number "${raw.patch_level_number}" not found`);
+    if (baseFields.includes("patch_level_number") && raw.patch_level_number) {
+      const pl = findByLabel(
+        patchLevels,
+        (p) => p.label,
+        raw.patch_level_number,
+      );
+      if (!pl)
+        errors.push(
+          `Patch / Level Number "${raw.patch_level_number}" not found`,
+        );
       else patchLevel = pl.label;
-    } else if (baseFields.includes('patch_level_number') && requiredBaseFields.includes('patch_level_number')) {
-      errors.push(`${fieldLabel('patch_level_number')} is required`);
+    } else if (
+      baseFields.includes("patch_level_number") &&
+      requiredBaseFields.includes("patch_level_number")
+    ) {
+      errors.push(`${fieldLabel("patch_level_number")} is required`);
     }
     let licenseId: string | null = null;
-    let productKey = '';
-    if (baseFields.includes('license_id')) {
+    let productKey = "";
+    if (baseFields.includes("license_id")) {
       const key = raw.license_key;
       if (!key) {
-        if (requiredBaseFields.includes('license_id')) errors.push(`${fieldLabel('license_id')} is required`);
+        if (requiredBaseFields.includes("license_id"))
+          errors.push(`${fieldLabel("license_id")} is required`);
       } else {
-        const match = licenses.find((l) => (l.license_key ?? '').trim().toLowerCase() === key.trim().toLowerCase());
+        const match = licenses.find(
+          (l) =>
+            (l.license_key ?? "").trim().toLowerCase() ===
+            key.trim().toLowerCase(),
+        );
         if (match) licenseId = match.id;
         else productKey = key;
       }
     }
     let modelId: string | null = null;
-    if (baseFields.includes('model_id') && raw.model) {
+    if (baseFields.includes("model_id") && raw.model) {
       const model = findByLabel(pcModels, (m) => m.name, raw.model);
       if (!model) errors.push(`Model "${raw.model}" not found`);
       else modelId = model.id;
     }
 
-    if (errors.length) return { preview, error: errors.join('; ') };
+    if (errors.length) return { preview, error: errors.join("; ") };
 
     const values = {
       hostname: raw.hostname || null,
       monitor_serial: raw.monitor_serial || null,
-      asset_tag: raw.asset_tag || 'N/A',
+      asset_tag: raw.asset_tag || "N/A",
       service_tag: raw.service_tag || null,
       mac_address: raw.mac_address || null,
       license_id: licenseId,
@@ -452,7 +716,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   };
 
   const importPcRow = async (values: Record<string, unknown>) => {
-    const { error } = await supabase.from('pc_registrations').insert(values);
+    const { error } = await supabase.from("pc_registrations").insert(values);
     return error?.message ?? null;
   };
 
@@ -462,45 +726,116 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // details, and any custom field values an admin has added.
   const pcSearchValue = (r: PCRegistration) => {
     const model = pcModels.find((m) => m.id === r.model_id);
-    const licenseType = r.license ? licenseTypeOptions.find((t) => t.code === r.license!.license_type)?.label : null;
+    const licenseType = r.license
+      ? licenseTypeOptions.find((t) => t.code === r.license!.license_type)
+          ?.label
+      : null;
     const extra = parsePcExtraData(r);
     return [
-      r.asset_id, r.hostname, r.monitor_serial, r.asset_tag, r.service_tag,
-      r.mac_address, r.product_key, r.cpu, r.memory_detail, r.generation_detail,
-      r.ip_address, r.owner_name, r.department?.name, r.floor_number,
-      r.switch_port_number, r.access_switch_name, r.access_switch_ip, r.patch_level_number,
-      model?.name, r.notes,
-      r.license?.license_key, r.license?.license_subtype, licenseType,
+      r.asset_id,
+      r.hostname,
+      r.monitor_serial,
+      r.asset_tag,
+      r.service_tag,
+      r.mac_address,
+      r.product_key,
+      r.cpu,
+      r.memory_detail,
+      r.generation_detail,
+      r.ip_address,
+      r.owner_name,
+      r.department?.name,
+      r.floor_number,
+      r.switch_port_number,
+      r.access_switch_name,
+      r.access_switch_ip,
+      r.patch_level_number,
+      model?.name,
+      r.notes,
+      r.license?.license_key,
+      r.license?.license_subtype,
+      licenseType,
       ...Object.values(extra),
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(" ");
   };
 
   const columns: Column<PCRegistration>[] = [
-    { key: 'asset_id', label: 'Key', sortable: true, sortValue: (r) => r.asset_id ?? '', render: (r) => r.asset_id ? <span className="font-mono text-xs font-semibold text-brand-700 dark:text-brand-300">{r.asset_id}</span> : <span className="text-gray-400 dark:text-gray-500 italic">-</span> },
-    { key: 'hostname', label: 'Name', sortable: true, sortValue: (r) => r.hostname, render: (r) => (
-      <div className="flex items-center gap-2">
-        {r.image && <img src={r.image} alt="" className="w-6 h-6 rounded object-cover shrink-0" />}
-        <span className="font-medium text-gray-900 dark:text-gray-100">{r.hostname}</span>
-      </div>
-    )},
-    { key: 'owner_name', label: 'Owner', render: (r) => r.owner_name ?? '-' },
-    { key: 'department', label: 'Department', render: (r) => r.department?.name ?? '-' },
-    { key: 'created_at', label: 'Registered', sortable: true, sortValue: (r) => r.created_at, render: (r) => new Date(r.created_at).toLocaleDateString() },
     {
-      key: 'actions',
-      label: 'Actions',
+      key: "asset_id",
+      label: "Key",
+      sortable: true,
+      sortValue: (r) => r.asset_id ?? "",
+      render: (r) =>
+        r.asset_id ? (
+          <span className="font-mono text-xs font-semibold text-brand-700 dark:text-brand-300">
+            {r.asset_id}
+          </span>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500 italic">-</span>
+        ),
+    },
+    {
+      key: "hostname",
+      label: "Name",
+      sortable: true,
+      sortValue: (r) => r.hostname,
+      render: (r) => (
+        <div className="flex items-center gap-2">
+          {r.image && (
+            <img
+              src={r.image}
+              alt=""
+              className="w-6 h-6 rounded object-cover shrink-0"
+            />
+          )}
+          <span className="font-medium text-gray-900 dark:text-gray-100">
+            {r.hostname}
+          </span>
+        </div>
+      ),
+    },
+    { key: "owner_name", label: "Owner", render: (r) => r.owner_name ?? "-" },
+    {
+      key: "department",
+      label: "Department",
+      render: (r) => r.department?.name ?? "-",
+    },
+    {
+      key: "created_at",
+      label: "Registered",
+      sortable: true,
+      sortValue: (r) => r.created_at,
+      render: (r) => new Date(r.created_at).toLocaleDateString(),
+    },
+    {
+      key: "actions",
+      label: "Actions",
       render: (r) => (
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => openView(r)} className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg" title="View Details">
+          <button
+            onClick={() => openView(r)}
+            className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg"
+            title="View Details"
+          >
             <Eye size={16} />
           </button>
           {canWrite() && (
-            <button onClick={() => openEdit(r)} className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg" title="Edit">
+            <button
+              onClick={() => openEdit(r)}
+              className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg"
+              title="Edit"
+            >
               <Pencil size={16} />
             </button>
           )}
           {canWrite() && (
-            <button onClick={() => handleDelete(r)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+            <button
+              onClick={() => handleDelete(r)}
+              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+              title="Delete"
+            >
               <Trash2 size={16} />
             </button>
           )}
@@ -509,74 +844,125 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     },
   ];
 
-  const viewSections: DetailSection[] = viewing ? [
-    {
-      title: 'PC Information',
-      fields: [
-        { label: 'Asset ID', value: viewing.asset_id, mono: true },
-        { label: 'Hostname', value: viewing.hostname },
-        { label: 'Display Monitor / Serial Number', value: viewing.monitor_serial },
-        { label: 'Asset Tag', value: viewing.asset_tag },
-        { label: 'Service Tag / Serial Number', value: viewing.service_tag },
+  const viewSections: DetailSection[] = viewing
+    ? [
         {
-          label: 'Product Key / License',
-          value: viewing.license
-            ? `${licenseTypeOptions.find((t) => t.code === viewing.license!.license_type)?.label ?? viewing.license!.license_type}${viewing.license!.license_subtype ? ' — ' + viewing.license!.license_subtype : ''}${viewing.license!.license_key ? ' (' + viewing.license!.license_key + ')' : ''}`
-            : viewing.product_key,
-          mono: true,
+          title: "PC Information",
+          fields: [
+            { label: "Asset ID", value: viewing.asset_id, mono: true },
+            { label: "Hostname", value: viewing.hostname },
+            {
+              label: "Display Monitor / Serial Number",
+              value: viewing.monitor_serial,
+            },
+            { label: "Asset Tag", value: viewing.asset_tag },
+            {
+              label: "Service Tag / Serial Number",
+              value: viewing.service_tag,
+            },
+            {
+              label: "Product Key / License",
+              value: viewing.license
+                ? `${licenseTypeOptions.find((t) => t.code === viewing.license!.license_type)?.label ?? viewing.license!.license_type}${viewing.license!.license_subtype ? " — " + viewing.license!.license_subtype : ""}${viewing.license!.license_key ? " (" + viewing.license!.license_key + ")" : ""}`
+                : viewing.product_key,
+              mono: true,
+            },
+            { label: "CPU", value: viewing.cpu },
+            { label: "Memory Detail", value: viewing.memory_detail },
+            { label: "Generation Detail", value: viewing.generation_detail },
+            {
+              label: "Model",
+              value: pcModels.find((m) => m.id === viewing.model_id)?.name,
+            },
+            {
+              label: "Photo",
+              value: viewing.image ? (
+                <ZoomImage src={viewing.image} size={220} />
+              ) : null,
+              full: true,
+            },
+          ],
         },
-        { label: 'CPU', value: viewing.cpu },
-        { label: 'Memory Detail', value: viewing.memory_detail },
-        { label: 'Generation Detail', value: viewing.generation_detail },
-        { label: 'Model', value: pcModels.find((m) => m.id === viewing.model_id)?.name },
-        { label: 'Photo', value: viewing.image ? <ZoomImage src={viewing.image} size={220} /> : null, full: true },
-      ],
-    },
-    {
-      title: 'Network',
-      fields: [
         {
-          label: 'IP Address',
-          value: viewing.ip_record
-            ? `${viewing.ip_address} — registered in IP Management (status: ${viewing.ip_record.status}${viewing.ip_record.ip_owner ? ', owner: ' + viewing.ip_record.ip_owner : ''})`
-            : viewing.ip_address,
-          mono: true,
+          title: "Network",
+          fields: [
+            {
+              label: "IP Address",
+              value: viewing.ip_record
+                ? `${viewing.ip_address} — registered in IP Management (status: ${viewing.ip_record.status}${viewing.ip_record.ip_owner ? ", owner: " + viewing.ip_record.ip_owner : ""})`
+                : viewing.ip_address,
+              mono: true,
+            },
+            { label: "MAC Address", value: viewing.mac_address, mono: true },
+            { label: "Switch Port Number", value: viewing.switch_port_number },
+            { label: "Access Switch Name", value: viewing.access_switch_name },
+            {
+              label: "Access Switch IP Address",
+              value: viewing.access_switch_ip,
+              mono: true,
+            },
+            {
+              label: "Patch / Level Number",
+              value: viewing.patch_level_number,
+            },
+          ],
         },
-        { label: 'MAC Address', value: viewing.mac_address, mono: true },
-        { label: 'Switch Port Number', value: viewing.switch_port_number },
-        { label: 'Access Switch Name', value: viewing.access_switch_name },
-        { label: 'Access Switch IP Address', value: viewing.access_switch_ip, mono: true },
-        { label: 'Patch / Level Number', value: viewing.patch_level_number },
-      ],
-    },
-    {
-      title: 'Ownership & Location',
-      fields: [
-        { label: 'Owner / Logged-in User', value: viewing.owner_name },
-        { label: 'Department / Branch', value: viewing.department?.name },
-        { label: 'Floor Number / Location', value: viewing.department?.is_branch ? 'Branch' : viewing.floor_number },
-      ],
-    },
-    ...(extraFields.length > 0 ? [{
-      title: 'Custom Fields',
-      fields: extraFields.map((f) => ({
-        label: f.label,
-        value: formatFieldValueForDisplay(f, parsePcExtraData(viewing)[f.key], {
-          departmentLabel: (id: string) => departments.find((d) => d.id === id)?.name ?? id,
-          employeeLabel: (id: string) => employees.find((u) => u.id === id)?.full_name ?? id,
-        }),
-      })),
-    }] : []),
-    {
-      title: 'Other',
-      fields: [
-        { label: 'Notes', value: viewing.notes, full: true },
-        { label: 'Registered', value: new Date(viewing.created_at).toLocaleString() },
-        { label: 'Registered By', value: viewing.registered_by ? (employees.find((u) => u.id === viewing!.registered_by)?.full_name ?? 'Unknown user') : null },
-        { label: 'Last Updated', value: new Date(viewing.updated_at).toLocaleString() },
-      ],
-    },
-  ] : [];
+        {
+          title: "Ownership & Location",
+          fields: [
+            { label: "Owner / Logged-in User", value: viewing.owner_name },
+            { label: "Department / Branch", value: viewing.department?.name },
+            {
+              label: "Floor Number / Location",
+              value: viewing.department?.is_branch
+                ? "Branch"
+                : viewing.floor_number,
+            },
+          ],
+        },
+        ...(extraFields.length > 0
+          ? [
+              {
+                title: "Custom Fields",
+                fields: extraFields.map((f) => ({
+                  label: f.label,
+                  value: formatFieldValueForDisplay(
+                    f,
+                    parsePcExtraData(viewing)[f.key],
+                    {
+                      departmentLabel: (id: string) =>
+                        departments.find((d) => d.id === id)?.name ?? id,
+                      employeeLabel: (id: string) =>
+                        employees.find((u) => u.id === id)?.full_name ?? id,
+                    },
+                  ),
+                })),
+              },
+            ]
+          : []),
+        {
+          title: "Other",
+          fields: [
+            { label: "Notes", value: viewing.notes, full: true },
+            {
+              label: "Registered",
+              value: new Date(viewing.created_at).toLocaleString(),
+            },
+            {
+              label: "Registered By",
+              value: viewing.registered_by
+                ? (employees.find((u) => u.id === viewing!.registered_by)
+                    ?.full_name ?? "Unknown user")
+                : null,
+            },
+            {
+              label: "Last Updated",
+              value: new Date(viewing.updated_at).toLocaleString(),
+            },
+          ],
+        },
+      ]
+    : [];
 
   // Renders one standard field by key, driven by the admin-configured
   // label/required flag — this is the single place that knows how to
@@ -585,7 +971,10 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
   // admin's configured order.
   const renderBaseField = (key: string): ReactNode => {
     const required = requiredBaseFields.includes(key);
-    const textField = (formKey: TextFieldKey, extra: Record<string, unknown> = {}) => (
+    const textField = (
+      formKey: TextFieldKey,
+      extra: Record<string, unknown> = {},
+    ) => (
       <Field key={key} label={fieldLabel(key)} required={required}>
         <TextInput
           value={form[formKey]}
@@ -598,15 +987,20 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
     );
 
     switch (key) {
-      case 'hostname':
+      case "hostname":
         return (
           <Field key={key} label={fieldLabel(key)} required={required}>
-            <TextInput value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} placeholder={fieldPlaceholder(key)} required={required} />
+            <TextInput
+              value={form.hostname}
+              onChange={(e) => setForm({ ...form, hostname: e.target.value })}
+              placeholder={fieldPlaceholder(key)}
+              required={required}
+            />
           </Field>
         );
-      case 'monitor_serial':
-        return textField('monitor_serial');
-      case 'asset_tag':
+      case "monitor_serial":
+        return textField("monitor_serial");
+      case "asset_tag":
         // Always optional (see handleSave: blank auto-fills to "N/A"
         // on save), regardless of the admin's field-required config -
         // no skip toggle needed since there's no "unfilled" state to
@@ -620,51 +1014,80 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             />
           </Field>
         );
-      case 'service_tag':
-        return textField('service_tag');
-      case 'mac_address':
+      case "service_tag":
+        return textField("service_tag");
+      case "mac_address":
         return (
           <Field key={key} label={fieldLabel(key)} required={required}>
-            <TextInput value={form.mac_address} onChange={(e) => setForm({ ...form, mac_address: e.target.value })} placeholder={fieldPlaceholder(key)} pattern={MAC_PATTERN} title="Enter a valid MAC address, e.g. 00:1A:2B:3C:4D:5E" required={required} />
+            <TextInput
+              value={form.mac_address}
+              onChange={(e) =>
+                setForm({ ...form, mac_address: e.target.value })
+              }
+              placeholder={fieldPlaceholder(key)}
+              pattern={MAC_PATTERN}
+              title="Enter a valid MAC address, e.g. 00:1A:2B:3C:4D:5E"
+              required={required}
+            />
           </Field>
         );
-      case 'license_id':
+      case "license_id":
         return (
           <Field
             key={key}
             label={fieldLabel(key)}
             required={required}
-            hint={licenses.length === 0 ? 'No licenses registered yet - add one under License Registration, or enter it manually.' : 'Search and select from License Management, or enter it manually if it isn\'t listed'}
+            hint={
+              licenses.length === 0
+                ? "No licenses registered yet - add one under License Registration, or enter it manually."
+                : "Search and select from License Management, or enter it manually if it isn't listed"
+            }
           >
             <LicensePicker
               licenses={licenses}
               licenseTypeOptions={licenseTypeOptions}
               value={form.license_id}
               manualValue={form.product_key}
-              onChange={({ licenseId, productKey }) => setForm({ ...form, license_id: licenseId, product_key: productKey })}
+              onChange={({ licenseId, productKey }) =>
+                setForm({
+                  ...form,
+                  license_id: licenseId,
+                  product_key: productKey,
+                })
+              }
               excludePcId={editing?.id}
             />
           </Field>
         );
-      case 'cpu':
-        return textField('cpu');
-      case 'memory_detail':
-        return textField('memory_detail');
-      case 'generation_detail':
-        return textField('generation_detail');
-      case 'ip_address':
+      case "cpu":
+        return textField("cpu");
+      case "memory_detail":
+        return textField("memory_detail");
+      case "generation_detail":
+        return textField("generation_detail");
+      case "ip_address":
         return (
           <Field key={key} label={fieldLabel(key)} required={required}>
-            <TextInput value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder={fieldPlaceholder(key)} pattern={IPV4_PATTERN} title="Enter a valid IPv4 address, e.g. 10.6.13.45" required={required} />
+            <TextInput
+              value={form.ip_address}
+              onChange={(e) => setForm({ ...form, ip_address: e.target.value })}
+              placeholder={fieldPlaceholder(key)}
+              pattern={IPV4_PATTERN}
+              title="Enter a valid IPv4 address, e.g. 10.6.13.45"
+              required={required}
+            />
           </Field>
         );
-      case 'owner_name':
-        return textField('owner_name');
-      case 'department_id':
+      case "owner_name":
+        return textField("owner_name");
+      case "department_id":
         return (
           <Field key={key} label={fieldLabel(key)} required={required}>
             <SearchableSelect
-              options={departments.map((d) => ({ value: d.id, label: `${d.name}${d.is_branch ? ' (Branch)' : ''}` }))}
+              options={departments.map((d) => ({
+                value: d.id,
+                label: `${d.name}${d.is_branch ? " (Branch)" : ""}`,
+              }))}
               value={form.department_id}
               onChange={(val) => {
                 const dept = departments.find((d) => d.id === val);
@@ -673,7 +1096,7 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
                   department_id: val,
                   // Floor/location only applies to Head Office - clear it
                   // automatically when a branch is selected.
-                  floor_number: dept?.is_branch ? '' : f.floor_number,
+                  floor_number: dept?.is_branch ? "" : f.floor_number,
                 }));
               }}
               placeholder="Select department/branch"
@@ -683,13 +1106,22 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             />
           </Field>
         );
-      case 'floor_number':
+      case "floor_number":
         if (isBranch) {
           return (
             <Field key={key} label={fieldLabel(key)}>
               <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" checked readOnly disabled className="h-4 w-4 rounded border-slate-300" />
-                Branch <span className="text-slate-400">(no floor/location for branch PCs)</span>
+                <input
+                  type="checkbox"
+                  checked
+                  readOnly
+                  disabled
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Branch{" "}
+                <span className="text-slate-400">
+                  (no floor/location for branch PCs)
+                </span>
               </label>
             </Field>
           );
@@ -699,7 +1131,11 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             key={key}
             label={fieldLabel(key)}
             required={required}
-            hint={floors.length === 0 ? 'No floors defined yet - add one under Customization > Floors.' : undefined}
+            hint={
+              floors.length === 0
+                ? "No floors defined yet - add one under Customization > Floors."
+                : undefined
+            }
           >
             <SearchableSelect
               options={floors.map((f) => ({ value: f.label, label: f.label }))}
@@ -707,65 +1143,133 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
               onChange={(val) => setForm({ ...form, floor_number: val })}
               placeholder="Select floor/location"
               searchPlaceholder="Search floors/locations…"
-              emptyMessage={floors.length === 0 ? 'No floors defined yet.' : 'No matching floors.'}
+              emptyMessage={
+                floors.length === 0
+                  ? "No floors defined yet."
+                  : "No matching floors."
+              }
               required={required}
             />
           </Field>
         );
-      case 'switch_port_number':
-        return textField('switch_port_number');
-      case 'access_switch_name':
+      case "switch_port_number":
+        return textField("switch_port_number");
+      case "access_switch_name":
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={accessSwitches.length === 0 ? 'No access switches defined yet - add one under Customization > Access Switches.' : undefined}>
+          <Field
+            key={key}
+            label={fieldLabel(key)}
+            required={required}
+            hint={
+              accessSwitches.length === 0
+                ? "No access switches defined yet - add one under Customization > Access Switches."
+                : undefined
+            }
+          >
             <SearchableSelect
-              options={accessSwitches.map((s) => ({ value: s.label, label: s.label }))}
+              options={accessSwitches.map((s) => ({
+                value: s.label,
+                label: s.label,
+              }))}
               value={form.access_switch_name}
               onChange={(val) => setForm({ ...form, access_switch_name: val })}
               placeholder="Select access switch (optional)"
               searchPlaceholder="Search access switches…"
-              emptyMessage={accessSwitches.length === 0 ? 'No access switches defined yet.' : 'No matching access switches.'}
+              emptyMessage={
+                accessSwitches.length === 0
+                  ? "No access switches defined yet."
+                  : "No matching access switches."
+              }
               required={required}
             />
           </Field>
         );
-      case 'access_switch_ip':
+      case "access_switch_ip":
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={accessSwitchIps.length === 0 ? 'No access switch IPs defined yet - add one under Customization > Access Switch IPs.' : undefined}>
+          <Field
+            key={key}
+            label={fieldLabel(key)}
+            required={required}
+            hint={
+              accessSwitchIps.length === 0
+                ? "No access switch IPs defined yet - add one under Customization > Access Switch IPs."
+                : undefined
+            }
+          >
             <SearchableSelect
-              options={accessSwitchIps.map((ip) => ({ value: ip.label, label: ip.label }))}
+              options={accessSwitchIps.map((ip) => ({
+                value: ip.label,
+                label: ip.label,
+              }))}
               value={form.access_switch_ip}
               onChange={(val) => setForm({ ...form, access_switch_ip: val })}
               placeholder="Select access switch IP"
               searchPlaceholder="Search access switch IPs…"
-              emptyMessage={accessSwitchIps.length === 0 ? 'No access switch IPs defined yet.' : 'No matching IPs.'}
+              emptyMessage={
+                accessSwitchIps.length === 0
+                  ? "No access switch IPs defined yet."
+                  : "No matching IPs."
+              }
               required={required}
             />
           </Field>
         );
-      case 'patch_level_number':
+      case "patch_level_number":
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={patchLevels.length === 0 ? 'No patch/level values defined yet - add one under Customization > Patch / Level Numbers.' : undefined}>
+          <Field
+            key={key}
+            label={fieldLabel(key)}
+            required={required}
+            hint={
+              patchLevels.length === 0
+                ? "No patch/level values defined yet - add one under Customization > Patch / Level Numbers."
+                : undefined
+            }
+          >
             <SearchableSelect
-              options={patchLevels.map((p) => ({ value: p.label, label: p.label }))}
+              options={patchLevels.map((p) => ({
+                value: p.label,
+                label: p.label,
+              }))}
               value={form.patch_level_number}
               onChange={(val) => setForm({ ...form, patch_level_number: val })}
               placeholder="Select patch/level number"
               searchPlaceholder="Search patch/level numbers…"
-              emptyMessage={patchLevels.length === 0 ? 'No patch/level values defined yet.' : 'No matching values.'}
+              emptyMessage={
+                patchLevels.length === 0
+                  ? "No patch/level values defined yet."
+                  : "No matching values."
+              }
               required={required}
             />
           </Field>
         );
-      case 'model_id':
+      case "model_id":
         return (
-          <Field key={key} label={fieldLabel(key)} required={required} hint={pcModels.length === 0 ? "No models defined yet — add one under Customization > Asset Models." : "Selecting a model fills in its default photo"}>
+          <Field
+            key={key}
+            label={fieldLabel(key)}
+            required={required}
+            hint={
+              pcModels.length === 0
+                ? "No models defined yet — add one under Customization > Asset Models."
+                : "Selecting a model fills in its default photo"
+            }
+          >
             <SearchableSelect
-              options={pcModels.map((m) => ({ value: m.id, label: `${m.name}${m.manufacturer ? ` (${m.manufacturer})` : ''}` }))}
+              options={pcModels.map((m) => ({
+                value: m.id,
+                label: `${m.name}${m.manufacturer ? ` (${m.manufacturer})` : ""}`,
+              }))}
               value={form.model_id}
               onChange={(val) => handleSelectModel(val)}
               placeholder="Select model (optional)"
               searchPlaceholder="Search models…"
-              emptyMessage={pcModels.length === 0 ? 'No models defined yet.' : 'No matching models.'}
+              emptyMessage={
+                pcModels.length === 0
+                  ? "No models defined yet."
+                  : "No matching models."
+              }
               required={required}
             />
           </Field>
@@ -784,7 +1288,9 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
           </div>
           <div>
             <h1 className="text-xl font-bold text-brand-600">PCs</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{records.length} registered PCs</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {records.length} registered PCs
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -792,7 +1298,11 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
             <Download size={16} /> Export CSV
           </Button>
           {canWrite() && (
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
               <Upload size={16} /> Import
             </Button>
           )}
@@ -823,46 +1333,76 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
       <DetailsModal
         open={!!viewing}
         onClose={() => setViewing(null)}
-        title={viewing?.hostname ?? ''}
+        title={viewing?.hostname ?? ""}
         subtitle={viewing?.asset_id ?? undefined}
         icon={<Monitor size={22} />}
         sections={viewSections}
-        onEdit={viewing && canWrite() ? () => { const rec = viewing; setViewing(null); openEdit(rec); } : undefined}
+        onEdit={
+          viewing && canWrite()
+            ? () => {
+                const rec = viewing;
+                setViewing(null);
+                openEdit(rec);
+              }
+            : undefined
+        }
         editLabel="Edit PC"
-        onDelete={viewing && canWrite() ? () => { const rec = viewing; setViewing(null); handleDelete(rec); } : undefined}
+        onDelete={
+          viewing && canWrite()
+            ? () => {
+                const rec = viewing;
+                setViewing(null);
+                handleDelete(rec);
+              }
+            : undefined
+        }
         deleteLabel="Delete PC"
       />
 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? 'Edit PC Registration' : 'Register New PC'}
+        title={editing ? "Edit PC Registration" : "Register New PC"}
         size="lg"
       >
         <form noValidate onSubmit={handleSave} className="space-y-4">
           {editing?.asset_id && (
             <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-brand-600 rounded-xl px-4 py-2.5">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Asset ID</span>
-              <span className="font-mono text-sm font-semibold text-brand-700 dark:text-brand-300">{editing.asset_id}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Asset ID
+              </span>
+              <span className="font-mono text-sm font-semibold text-brand-700 dark:text-brand-300">
+                {editing.asset_id}
+              </span>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {baseFields.map((key) => <Fragment key={key}>{renderBaseField(key)}</Fragment>)}
+            {baseFields.map((key) => (
+              <Fragment key={key}>{renderBaseField(key)}</Fragment>
+            ))}
           </div>
           {extraFields.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Additional Details</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+                Additional Details
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {extraFields.map((f) => (
                   <Field
                     key={f.key}
                     label={f.label}
                     required={f.required}
-                    className={f.type === 'multiselect' || f.type === 'radio' || f.type === 'long_text' ? 'sm:col-span-2' : undefined}
+                    className={
+                      f.type === "multiselect" ||
+                      f.type === "radio" ||
+                      f.type === "long_text"
+                        ? "sm:col-span-2"
+                        : undefined
+                    }
                   >
                     <DynamicField
                       field={f}
-                      value={form.extra_data[f.key] ?? ''}
+                      value={form.extra_data[f.key] ?? ""}
                       onChange={(value) => setExtraField(f.key, value)}
                       departments={departments}
                       employees={employees}
@@ -872,14 +1412,31 @@ export function PCRegistrationPage({ autoOpenCreate }: { autoOpenCreate?: number
               </div>
             </div>
           )}
-          <ImageInput value={form.image} onChange={(dataUrl) => setForm({ ...form, image: dataUrl })} label="PC Photo" hint="Optional — helps identify this specific unit" variant="large" />
+          <ImageInput
+            value={form.image}
+            onChange={(dataUrl) => setForm({ ...form, image: dataUrl })}
+            label="PC Photo"
+            hint="Optional — helps identify this specific unit"
+            variant="large"
+          />
           <Field label="Notes">
-            <TextArea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Additional notes..." />
+            <TextArea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={2}
+              placeholder="Additional notes..."
+            />
           </Field>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : editing ? 'Update PC' : 'Register PC'}
+              {saving ? "Saving..." : editing ? "Update PC" : "Register PC"}
             </Button>
           </div>
         </form>

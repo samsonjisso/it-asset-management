@@ -163,6 +163,17 @@ async function seedPcFormFields() {
   console.log('Seeded pc_form_fields');
 }
 
+async function seedIpFormFields() {
+  if ((await count('ip_form_fields')) > 0) return;
+  const baseFields = ['hostname', 'department_id', 'ip_owner', 'mac_address', 'access_switch_port', 'patch_panel_label', 'notes'];
+  const requiredFields = ['hostname', 'department_id', 'ip_owner', 'mac_address', 'access_switch_port', 'patch_panel_label'];
+  await pool.query(
+    'INSERT INTO ip_form_fields (id, base_fields, required_base_fields, field_labels, fields) VALUES (?, ?, ?, ?, ?)',
+    [crypto.randomUUID(), JSON.stringify(baseFields), JSON.stringify(requiredFields), JSON.stringify({}), JSON.stringify([])]
+  );
+  console.log('Seeded ip_form_fields');
+}
+
 async function seedAdmin() {
   const email = (process.env.SEED_ADMIN_EMAIL || 'admin@gohbetochbank.com').trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD || 'Admin@123';
@@ -227,6 +238,7 @@ async function main() {
   await seedFloors();
   await seedReminderTypes();
   await seedPcFormFields();
+  await seedIpFormFields();
   await seedAdmin();
   console.log('Seed complete.');
   await pool.end();

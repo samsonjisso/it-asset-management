@@ -56,11 +56,15 @@ export function StdFieldsEditor({ allKeys, meta, included, required, labels, non
     const target = index + dir;
     if (target < 0 || target >= included.length) return;
     const next = [...included];
-    [next[index], next[target]] = [next[target], next[index]];
+    const current = next[index];
+    const destination = next[target];
+    if (current === undefined || destination === undefined) return;
+    [next[index], next[target]] = [destination, current];
     onChange({ included: next, required, labels });
   };
 
   const toggleRequired = (key: string) => {
+    console.log('toggleRequired', key, required.includes(key), nonRequirable.includes(key));
     if (nonRequirable.includes(key)) return;
     const next = required.includes(key) ? required.filter((k) => k !== key) : [...required, key];
     onChange({ included, required: next, labels });

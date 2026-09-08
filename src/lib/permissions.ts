@@ -50,6 +50,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { id: 'device_types', label: 'Device Types', group: 'admin', roles: ['admin', 'audit'] },
   { id: 'reminder_types', label: 'Reminder Types', group: 'admin', roles: ['admin', 'audit'] },
   { id: 'pc_fields', label: 'PC Registration Fields', group: 'admin', roles: ['admin', 'audit'] },
+  { id: 'ip_fields', label: 'IP Registration Fields', group: 'admin', roles: ['admin', 'audit'] },
   { id: 'ip_subnets', label: 'IP Subnets', group: 'admin', roles: ['admin', 'audit'] },
   { id: 'asset_models', label: 'Asset Models', group: 'admin', roles: ['admin', 'editor', 'audit'] },
   { id: 'vendors', label: 'Vendors', group: 'admin', roles: ['admin', 'editor', 'audit'] },

@@ -1,4 +1,5 @@
 import type { PoolConnection, Pool } from 'mysql2/promise';
+import { nowSql } from '@/server/lib/db';
 import { ApiError } from '@/server/lib/http';
 import { WRITE_ROLES, DELETE_ROLES, ASSET_DELETE_ROLES } from '@/server/lib/constants';
 import type { CrudTableConfig, Row } from './crudEngine';
@@ -186,6 +187,13 @@ export const deviceTypesConfig: CrudTableConfig = {
 
 export const pcFormFieldsConfig: CrudTableConfig = {
   table: 'pc_form_fields',
+  insertRoles: ['admin'],
+  updateRoles: ['admin'],
+  deleteRoles: ['admin'],
+};
+
+export const ipFormFieldsConfig: CrudTableConfig = {
+  table: 'ip_form_fields',
   insertRoles: ['admin'],
   updateRoles: ['admin'],
   deleteRoles: ['admin'],
@@ -668,6 +676,35 @@ async function checkAndLinkIp(table: 'pc_registrations' | 'devices', body: Row, 
     return;
   }
 
+  // A PC IP entered for the first time should become a real IP Management
+  // record as part of the same transaction, so both modules share one source
+  // of truth instead of leaving the PC with an unlinked text-only address.
+  if (table === 'pc_registrations') {
+    const [subnetRows] = await conn.query<any[]>('SELECT * FROM ip_subnets');
+    const subnet = findMatchingSubnet(raw, subnetRows);
+    const ipId = crypto.randomUUID();
+    const timestamp = nowSql();
+    await conn.query(
+      `INSERT INTO ip_addresses
+       (id, ip_address, subnet_id, hostname, department_id, ip_owner, mac_address, status, registered_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'assigned', ?, ?, ?)`,
+      [
+        ipId,
+        raw,
+        subnet?.id ?? null,
+        body.hostname ? String(body.hostname).trim() : null,
+        body.department_id || null,
+        body.owner_name ? String(body.owner_name).trim() : null,
+        body.mac_address ? String(body.mac_address).trim() : null,
+        body.registered_by || null,
+        timestamp,
+        timestamp,
+      ]
+    );
+    body.ip_id = ipId;
+    return;
+  }
+
   const [freeTextRows] = await conn.query<any[]>(
     `SELECT id, hostname FROM pc_registrations
      WHERE ip_address IS NOT NULL AND TRIM(ip_address) = TRIM(?) AND NOT (id = ? AND ? = 'pc_registrations')
@@ -909,16 +946,19 @@ export const remindersConfig: CrudTableConfig = {
 const IP_MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 const IP_HOSTNAME_RE = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/;
 const IP_STATUS_VALUES = ['assigned', 'reserved', 'available', 'decommissioned'];
-const IP_REQUIRED_FIELDS: [string, string][] = [
+const IP_FIXED_REQUIRED_FIELDS: [string, string][] = [
+  ['status', 'Status'],
+  ['subnet_id', 'IP Subnet'],
+  ['ip_address', 'IP Address'],
+];
+
+const IP_DEFAULT_REQUIRED_FIELDS: [string, string][] = [
   ['hostname', 'Hostname'],
   ['department_id', 'Department / Branch'],
   ['mac_address', 'MAC Address'],
   ['patch_panel_label', 'Patch Panel Label / Number'],
-  ['status', 'Status'],
   ['access_switch_port', 'Access Switch Port / Interface Number'],
   ['ip_owner', 'IP Address Owner (Employee)'],
-  ['subnet_id', 'IP Subnet'],
-  ['ip_address', 'IP Address'],
 ];
 
 function findMatchingSubnet(ip: string, subnets: Row[]): Row | null {
@@ -931,13 +971,43 @@ function findMatchingSubnet(ip: string, subnets: Row[]): Row | null {
 }
 
 async function validateIpAddress(body: Row, conn: PoolConnection, isInsert: boolean, currentId: string | null): Promise<void> {
-  for (const [key, label] of IP_REQUIRED_FIELDS) {
+  const [configRows] = await conn.query<any[]>('SELECT required_base_fields, fields FROM ip_form_fields ORDER BY created_at LIMIT 1');
+  const config = configRows[0];
+  let requiredFields = IP_DEFAULT_REQUIRED_FIELDS;
+  if (config?.required_base_fields) {
+    try {
+      const parsed = typeof config.required_base_fields === 'string'
+        ? JSON.parse(config.required_base_fields)
+        : config.required_base_fields;
+      if (Array.isArray(parsed)) {
+        const labels = new Map(IP_DEFAULT_REQUIRED_FIELDS);
+        requiredFields = parsed.filter((key): key is string => typeof key === 'string' && labels.has(key)).map((key) => [key, labels.get(key)!]);
+      }
+    } catch {
+      // Keep the safe defaults when an old config row contains invalid JSON.
+    }
+  }
+  for (const [key, label] of [...IP_FIXED_REQUIRED_FIELDS, ...requiredFields]) {
     if (isInsert && !(key in body)) throw new ApiError(400, `${label} is required`);
     if (key in body) {
       const value = String(body[key] ?? '').trim();
       if (!value) throw new ApiError(400, `${label} is required`);
       body[key] = value;
     }
+  }
+  if ('extra_data' in body && body.extra_data != null) {
+    const values = typeof body.extra_data === 'string' ? JSON.parse(body.extra_data) : body.extra_data;
+    const definitions = config?.fields
+      ? typeof config.fields === 'string' ? JSON.parse(config.fields) : config.fields
+      : [];
+    if (Array.isArray(definitions) && values && typeof values === 'object') {
+      for (const field of definitions) {
+        if (field?.required && !String(values[field.key] ?? '').trim()) {
+          throw new ApiError(400, `${field.label || field.key} is required`);
+        }
+      }
+    }
+    body.extra_data = values;
   }
   if ('ip_address' in body && !IPV4_RE.test(body.ip_address)) throw new ApiError(400, 'IP Address must be a valid IPv4 address (e.g., 10.6.1.50)');
   if ('ip_address' in body) {
@@ -1003,6 +1073,7 @@ export const crudRegistry: Record<string, CrudTableConfig> = {
   license_subtypes: licenseSubtypesConfig,
   device_types: deviceTypesConfig,
   pc_form_fields: pcFormFieldsConfig,
+  ip_form_fields: ipFormFieldsConfig,
   device_owners: deviceOwnersConfig,
   server_owners: serverOwnersConfig,
   vendors: vendorsConfig,

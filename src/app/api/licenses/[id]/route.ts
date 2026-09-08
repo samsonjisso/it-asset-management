@@ -6,21 +6,25 @@ import { getRowById, updateRow, deleteRow } from '@/server/controllers/crudEngin
 import { licensesConfig } from '@/server/controllers/crudConfig';
 import { licenseSchema } from '@/server/validators/licenses.schema';
 
-export const GET = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const GET = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  
   const auth = await requireAuth(req);
-  const row = await getRowById(licensesConfig, auth, params.id);
+  const { id } = await params;
+  const row = await getRowById(licensesConfig, auth, id);
   return jsonOk(row, { headers: NO_STORE_HEADERS });
 });
 
-export const PATCH = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const PATCH = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }>    }) => {
   const auth = await requireAuth(req);
   const body = await parsePartialBody(req, licenseSchema);
-  const row = await updateRow(licensesConfig, auth, params.id, body as Record<string, unknown>);
+  const { id } = await params;
+  const row = await updateRow(licensesConfig, auth, id, body as Record<string, unknown>);
   return jsonOk(row, { headers: NO_STORE_HEADERS });
 });
 
-export const DELETE = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const DELETE = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const auth = await requireAuth(req);
-  await deleteRow(licensesConfig, auth, params.id);
+  const { id } = await params;
+  await deleteRow(licensesConfig, auth, id);
   return jsonOk({ ok: true }, { headers: NO_STORE_HEADERS });
 });
