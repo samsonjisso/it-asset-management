@@ -243,8 +243,8 @@ export function PCRegistrationPage({
     setEditing(null);
     setForm({
       ...emptyForm,
-      hostname: initialHostname ?? '',
-      ip_address: initialIpAddress ?? '',
+      hostname: initialHostname ?? "",
+      ip_address: initialIpAddress ?? "",
     });
     setModalOpen(true);
   };

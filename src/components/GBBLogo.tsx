@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
 interface LogoProps {
   size?: number;
   className?: string;
 }
 
-export function GBBLogo({ size = 48, className = '' }: LogoProps) {
+export function GBBLogo({ size = 48, className = "" }: LogoProps) {
   return (
     <img
       src="/assets/image.png"

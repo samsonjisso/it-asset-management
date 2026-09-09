@@ -12,7 +12,8 @@ export const MAC_REGEX = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 // digits and hyphens, each 1-63 chars, never starting or ending with
 // a hyphen. Blocks spaces, underscores and other stray characters
 // without being strict about site-specific naming conventions.
-export const HOSTNAME_REGEX = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/;
+export const HOSTNAME_REGEX =
+  /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/;
 
 // String forms (no ^/$ — the HTML pattern attribute anchors the whole
 // value automatically) for use as <input pattern="..."> hints.
@@ -51,7 +52,8 @@ export function isValidHostname(value: string): boolean {
 // hold only letters (incl. accented), spaces, apostrophes, hyphens
 // and periods, so a value like "12345" or "-" can't pass as a "valid"
 // owner selection.
-export const EMPLOYEE_NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,79}$/;
+export const EMPLOYEE_NAME_REGEX =
+  /^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.\- ]{1,79}$/;
 
 export function isValidEmployeeName(value: string): boolean {
   return EMPLOYEE_NAME_REGEX.test(value.trim());
@@ -94,7 +96,19 @@ export function isValidIPPrefix(value: string): boolean {
 
 export function digitsAndDotsKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+  const allowed = [
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Escape",
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Home",
+    "End",
+  ];
   if (allowed.includes(e.key)) return;
   if (!/^[\d.]$/.test(e.key)) e.preventDefault();
 }
@@ -106,7 +120,19 @@ export function digitsAndDotsKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
 // 0-9.
 export function digitsOnlyKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+  const allowed = [
+    "Backspace",
+    "Delete",
+    "Tab",
+    "Escape",
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "Home",
+    "End",
+  ];
   if (allowed.includes(e.key)) return;
   if (!/^\d$/.test(e.key)) e.preventDefault();
 }
@@ -115,5 +141,5 @@ export function digitsOnlyKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
 // sanitizer so a pasted non-numeric string can't sneak a numbers-only
 // field into an invalid state.
 export function sanitizeDigits(value: string): string {
-  return value.replace(/[^\d]/g, '');
+  return value.replace(/[^\d]/g, "");
 }

@@ -1,18 +1,18 @@
-import jwt from 'jsonwebtoken';
-import type { PoolConnection } from 'mysql2/promise';
-import { pool } from './db';
-import type { Role } from './constants';
+import jwt from "jsonwebtoken";
+import type { PoolConnection } from "mysql2/promise";
+import { pool } from "./db";
+import type { Role } from "./constants";
 
 // Security: fail closed in production if no real secret is configured,
 // same as the original — refuse to start rather than silently sign
 // tokens with a known dev secret.
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
   throw new Error(
-    'JWT_SECRET environment variable must be set in production. Refusing to start with the insecure development fallback secret.'
+    "JWT_SECRET environment variable must be set in production. Refusing to start with the insecure development fallback secret.",
   );
 }
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret-change-me";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
 
 export interface JwtPayload {
   sub: string;
@@ -45,10 +45,16 @@ export interface ProfileRow {
   updated_at: string;
 }
 
-export function signToken(profile: Pick<ProfileRow, 'id' | 'email' | 'role'>): string {
-  return jwt.sign({ sub: profile.id, email: profile.email, role: profile.role }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+export function signToken(
+  profile: Pick<ProfileRow, "id" | "email" | "role">,
+): string {
+  return jwt.sign(
+    { sub: profile.id, email: profile.email, role: profile.role },
+    JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRES_IN,
+    },
+  );
 }
 
 export function verifyToken(token: string): JwtPayload {
@@ -61,10 +67,12 @@ export function verifyToken(token: string): JwtPayload {
  * NULL, empty, or malformed value is treated as "unrestricted" rather
  * than locking the account out.
  */
-export function parsePermissions(raw: ProfileRow['permissions']): string[] | null {
+export function parsePermissions(
+  raw: ProfileRow["permissions"],
+): string[] | null {
   if (!raw) return null;
   try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
   } catch {
     return null;
@@ -77,23 +85,43 @@ export function parsePermissions(raw: ProfileRow['permissions']): string[] | nul
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
 
-export function isAccountLocked(row: Pick<ProfileRow, 'locked_until'> | undefined): boolean {
-  return !!(row?.locked_until && new Date(row.locked_until).getTime() > Date.now());
+export function isAccountLocked(
+  row: Pick<ProfileRow, "locked_until"> | undefined,
+): boolean {
+  return !!(
+    row?.locked_until && new Date(row.locked_until).getTime() > Date.now()
+  );
 }
 
-export async function recordFailedLogin(row: Pick<ProfileRow, 'id' | 'failed_login_attempts'>): Promise<void> {
+export async function recordFailedLogin(
+  row: Pick<ProfileRow, "id" | "failed_login_attempts">,
+): Promise<void> {
   const attempts = (row.failed_login_attempts || 0) + 1;
   const lockedUntil =
-    attempts >= MAX_FAILED_LOGIN_ATTEMPTS ? new Date(Date.now() + LOGIN_LOCKOUT_MS).toISOString().slice(0, 23).replace('T', ' ') : null;
-  await pool.query('UPDATE profiles SET failed_login_attempts = ?, locked_until = ? WHERE id = ?', [attempts, lockedUntil, row.id]);
+    attempts >= MAX_FAILED_LOGIN_ATTEMPTS
+      ? new Date(Date.now() + LOGIN_LOCKOUT_MS)
+          .toISOString()
+          .slice(0, 23)
+          .replace("T", " ")
+      : null;
+  await pool.query(
+    "UPDATE profiles SET failed_login_attempts = ?, locked_until = ? WHERE id = ?",
+    [attempts, lockedUntil, row.id],
+  );
 }
 
 export async function clearFailedLogins(id: string): Promise<void> {
-  await pool.query('UPDATE profiles SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?', [id]);
+  await pool.query(
+    "UPDATE profiles SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?",
+    [id],
+  );
 }
 
 export async function isOwner(id: string): Promise<boolean> {
-  const [rows] = await pool.query<any[]>('SELECT is_owner FROM profiles WHERE id = ?', [id]);
+  const [rows] = await pool.query<any[]>(
+    "SELECT is_owner FROM profiles WHERE id = ?",
+    [id],
+  );
   return !!rows[0]?.is_owner;
 }
 
@@ -103,8 +131,12 @@ export async function isOwner(id: string): Promise<boolean> {
  * hours old) so that an admin restricting access or disabling an
  * account takes effect immediately. Returns null if not authenticated.
  */
-export async function authenticate(authorizationHeader: string | null): Promise<AuthContext | null> {
-  const token = authorizationHeader?.startsWith('Bearer ') ? authorizationHeader.slice(7) : null;
+export async function authenticate(
+  authorizationHeader: string | null,
+): Promise<AuthContext | null> {
+  const token = authorizationHeader?.startsWith("Bearer ")
+    ? authorizationHeader.slice(7)
+    : null;
   if (!token) return null;
   let payload: JwtPayload;
   try {
@@ -113,8 +145,8 @@ export async function authenticate(authorizationHeader: string | null): Promise<
     return null;
   }
   const [rows] = await pool.query<any[]>(
-    'SELECT role, is_active, permissions, full_name FROM profiles WHERE id = ?',
-    [payload.sub]
+    "SELECT role, is_active, permissions, full_name FROM profiles WHERE id = ?",
+    [payload.sub],
   );
   const row = rows[0];
   if (!row || !row.is_active) return null;
@@ -135,32 +167,68 @@ export function hasModuleAccess(auth: AuthContext, moduleKey: string): boolean {
 // case-insensitively, with leetspeak substitutions and trailing digits
 // stripped first.
 const COMMON_WEAK_PASSWORDS = new Set([
-  'password', 'passw0rd', 'password1', 'password123',
-  '12345678', '123456789', '1234567890', 'qwerty', 'qwerty123',
-  'letmein', 'welcome', 'welcome1', 'admin', 'admin123', 'changeme',
-  'goh betoch bank', 'gohbetochbank', 'iloveyou', 'monkey',
-  'football', 'dragon', 'sunshine', 'princess', 'trustno1', 'abc12345',
+  "password",
+  "passw0rd",
+  "password1",
+  "password123",
+  "12345678",
+  "123456789",
+  "1234567890",
+  "qwerty",
+  "qwerty123",
+  "letmein",
+  "welcome",
+  "welcome1",
+  "admin",
+  "admin123",
+  "changeme",
+  "goh betoch bank",
+  "gohbetochbank",
+  "iloveyou",
+  "monkey",
+  "football",
+  "dragon",
+  "sunshine",
+  "princess",
+  "trustno1",
+  "abc12345",
 ]);
 
 function normalizeForWeakCheck(password: string): string {
   let s = password.toLowerCase();
-  s = s.replace(/[\d!@#$%^&*()\-_=+.,]+$/, '');
-  s = s.replace(/@/g, 'a').replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/\$/g, 's');
-  return s.replace(/[^a-z]/g, '');
+  s = s.replace(/[\d!@#$%^&*()\-_=+.,]+$/, "");
+  s = s
+    .replace(/@/g, "a")
+    .replace(/0/g, "o")
+    .replace(/1/g, "i")
+    .replace(/3/g, "e")
+    .replace(/4/g, "a")
+    .replace(/\$/g, "s");
+  return s.replace(/[^a-z]/g, "");
 }
 
 /** Returns an error message, or null if the password passes. */
-export function passwordComplexityError(password: string | undefined | null): string | null {
-  if (!password || password.length < 8) return 'Password must be at least 8 characters long';
-  if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter';
-  if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter';
-  if (!/[0-9]/.test(password)) return 'Password must include at least one number';
-  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must include at least one special character';
-  if (/^(.)\1+$/.test(password) || /^(?:0123456789|1234567890|abcdefgh)/i.test(password)) {
-    return 'Password is too predictable — avoid repeated or sequential characters';
+export function passwordComplexityError(
+  password: string | undefined | null,
+): string | null {
+  if (!password || password.length < 8)
+    return "Password must be at least 8 characters long";
+  if (!/[a-z]/.test(password))
+    return "Password must include at least one lowercase letter";
+  if (!/[A-Z]/.test(password))
+    return "Password must include at least one uppercase letter";
+  if (!/[0-9]/.test(password))
+    return "Password must include at least one number";
+  if (!/[^A-Za-z0-9]/.test(password))
+    return "Password must include at least one special character";
+  if (
+    /^(.)\1+$/.test(password) ||
+    /^(?:0123456789|1234567890|abcdefgh)/i.test(password)
+  ) {
+    return "Password is too predictable — avoid repeated or sequential characters";
   }
   if (COMMON_WEAK_PASSWORDS.has(normalizeForWeakCheck(password))) {
-    return 'That password is too common — please choose something less guessable';
+    return "That password is too common — please choose something less guessable";
   }
   return null;
 }

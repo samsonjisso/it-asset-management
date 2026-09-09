@@ -69,7 +69,9 @@ export function ProfilePage() {
     }
   };
 
-  const handleChangePassword = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleChangePassword = async (
+    e: React.SubmitEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
     if (!newPassword) {
       toast("New password is required", "error");

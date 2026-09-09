@@ -1,17 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, AssetModel, DeviceType, Vendor } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, TextArea, SelectInput, Button } from '../components/FormControls';
-import { SearchableSelect } from '../components/SearchableSelect';
-import { ImageInput } from '../components/ImageInput';
-import { ZoomImage } from '../components/ZoomImage';
-import { Plus, Pencil, Trash2, Boxes, Monitor, HardDrive } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import { supabase, AssetModel, DeviceType, Vendor } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/Toast";
+import { Modal } from "../components/Modal";
+import {
+  Field,
+  TextInput,
+  TextArea,
+  SelectInput,
+  Button,
+} from "../components/FormControls";
+import { SearchableSelect } from "../components/SearchableSelect";
+import { ImageInput } from "../components/ImageInput";
+import { ZoomImage } from "../components/ZoomImage";
+import { Plus, Pencil, Trash2, Boxes, Monitor, HardDrive } from "lucide-react";
 
-const emptyForm = { target: 'pc' as AssetModel['target'], device_type: '', name: '', manufacturer: '', image: null as string | null, notes: '' };
+const emptyForm = {
+  target: "pc" as AssetModel["target"],
+  device_type: "",
+  name: "",
+  manufacturer: "",
+  image: null as string | null,
+  notes: "",
+};
 
 // Customization: define computer/device models up front (with a
 // reference photo) so that when registering a PC or device, the user
@@ -19,13 +32,13 @@ const emptyForm = { target: 'pc' as AssetModel['target'], device_type: '', name:
 // and typing manufacturer/model details every single time.
 export function AssetModelsPage() {
   const { hasRole } = useAuth();
-  const canManage = hasRole('admin');
+  const canManage = hasRole("admin");
   const { toast } = useToast();
   const [models, setModels] = useState<AssetModel[]>([]);
   const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pc' | 'device'>('all');
+  const [filter, setFilter] = useState<"all" | "pc" | "device">("all");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AssetModel | null>(null);
@@ -35,9 +48,9 @@ export function AssetModelsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const [modelsRes, typesRes, vendorsRes] = await Promise.all([
-      supabase.from('asset_models').select('*').order('name'),
-      supabase.from('device_types').select('*').order('label'),
-      supabase.from('vendors').select('*').order('label'),
+      supabase.from("asset_models").select("*").order("name"),
+      supabase.from("device_types").select("*").order("label"),
+      supabase.from("vendors").select("*").order("label"),
     ]);
     if (modelsRes.data) setModels(modelsRes.data as AssetModel[]);
     if (typesRes.data) setDeviceTypes(typesRes.data as DeviceType[]);
@@ -59,11 +72,11 @@ export function AssetModelsPage() {
     setEditing(m);
     setForm({
       target: m.target,
-      device_type: m.device_type ?? '',
+      device_type: m.device_type ?? "",
       name: m.name,
-      manufacturer: m.manufacturer ?? '',
+      manufacturer: m.manufacturer ?? "",
       image: m.image ?? null,
-      notes: m.notes ?? '',
+      notes: m.notes ?? "",
     });
     setModalOpen(true);
   };
@@ -71,26 +84,26 @@ export function AssetModelsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      toast('Model name is required', 'error');
+      toast("Model name is required", "error");
       return;
     }
     setSaving(true);
     const payload = {
       target: form.target,
-      device_type: form.target === 'device' ? form.device_type || null : null,
+      device_type: form.target === "device" ? form.device_type || null : null,
       name: form.name.trim(),
       manufacturer: form.manufacturer || null,
       image: form.image,
       notes: form.notes || null,
     };
     const { error } = editing
-      ? await supabase.from('asset_models').update(payload).eq('id', editing.id)
-      : await supabase.from('asset_models').insert(payload);
+      ? await supabase.from("asset_models").update(payload).eq("id", editing.id)
+      : await supabase.from("asset_models").insert(payload);
     setSaving(false);
     if (error) {
-      toast(error.message, 'error');
+      toast(error.message, "error");
     } else {
-      toast(editing ? 'Model updated' : 'Model added', 'success');
+      toast(editing ? "Model updated" : "Model added", "success");
       setModalOpen(false);
       loadData();
     }
@@ -98,15 +111,18 @@ export function AssetModelsPage() {
 
   const handleDelete = async (m: AssetModel) => {
     if (!confirm(`Delete model "${m.name}"?`)) return;
-    const { error } = await supabase.from('asset_models').delete().eq('id', m.id);
-    if (error) toast(error.message, 'error');
+    const { error } = await supabase
+      .from("asset_models")
+      .delete()
+      .eq("id", m.id);
+    if (error) toast(error.message, "error");
     else {
-      toast('Model deleted', 'success');
+      toast("Model deleted", "success");
       loadData();
     }
   };
 
-  const visible = models.filter((m) => filter === 'all' || m.target === filter);
+  const visible = models.filter((m) => filter === "all" || m.target === filter);
 
   return (
     <div className="space-y-4">
@@ -116,9 +132,12 @@ export function AssetModelsPage() {
             <Boxes size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-brand-600">Asset Model Management</h1>
+            <h1 className="text-xl font-bold text-brand-600">
+              Asset Model Management
+            </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {models.length} model{models.length === 1 ? '' : 's'} defined — selectable (with photo) when registering a PC or device
+              {models.length} model{models.length === 1 ? "" : "s"} defined —
+              selectable (with photo) when registering a PC or device
             </p>
           </div>
         </div>
@@ -130,15 +149,17 @@ export function AssetModelsPage() {
       </div>
 
       <div className="flex gap-2">
-        {(['all', 'pc', 'device'] as const).map((f) => (
+        {(["all", "pc", "device"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              filter === f ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900'
+              filter === f
+                ? "bg-brand-600 text-white border-brand-600"
+                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
             }`}
           >
-            {f === 'all' ? 'All' : f === 'pc' ? 'PC Models' : 'Device Models'}
+            {f === "all" ? "All" : f === "pc" ? "PC Models" : "Device Models"}
           </button>
         ))}
       </div>
@@ -149,36 +170,59 @@ export function AssetModelsPage() {
         </div>
       ) : visible.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-10 text-center text-gray-500 dark:text-gray-400">
-          No models defined yet. Add one with a reference photo so it can be picked directly on the PC or Device
-          Registration form.
+          No models defined yet. Add one with a reference photo so it can be
+          picked directly on the PC or Device Registration form.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((m) => (
-            <div key={m.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 gbb-card-hover">
+            <div
+              key={m.id}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 gbb-card-hover"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   {m.image ? (
                     <ZoomImage src={m.image} size={48} />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-900 border border-brand-600 flex items-center justify-center overflow-hidden shrink-0">
-                      {m.target === 'pc' ? <Monitor size={20} className="text-gray-300 dark:text-gray-600" /> : <HardDrive size={20} className="text-gray-300 dark:text-gray-600" />}
+                      {m.target === "pc" ? (
+                        <Monitor
+                          size={20}
+                          className="text-gray-300 dark:text-gray-600"
+                        />
+                      ) : (
+                        <HardDrive
+                          size={20}
+                          className="text-gray-300 dark:text-gray-600"
+                        />
+                      )}
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">{m.name}</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">
+                      {m.name}
+                    </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {m.target === 'pc' ? 'PC' : 'Device'}
-                      {m.manufacturer ? ` · ${m.manufacturer}` : ''}
+                      {m.target === "pc" ? "PC" : "Device"}
+                      {m.manufacturer ? ` · ${m.manufacturer}` : ""}
                     </p>
                   </div>
                 </div>
                 {canManage && (
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => openEdit(m)} className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg" title="Edit">
+                    <button
+                      onClick={() => openEdit(m)}
+                      className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg"
+                      title="Edit"
+                    >
                       <Pencil size={16} />
                     </button>
-                    <button onClick={() => handleDelete(m)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                    <button
+                      onClick={() => handleDelete(m)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Delete"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -189,47 +233,102 @@ export function AssetModelsPage() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Model' : 'Add Model'} size="sm">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? "Edit Model" : "Add Model"}
+        size="sm"
+      >
         <form noValidate onSubmit={handleSave} className="space-y-4">
           <Field label="Register This Model Under" required>
-            <SelectInput value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value as AssetModel['target'] })}>
+            <SelectInput
+              value={form.target}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  target: e.target.value as AssetModel["target"],
+                })
+              }
+            >
               <option value="pc">PC Registration</option>
               <option value="device">Device Registration</option>
             </SelectInput>
           </Field>
-          {form.target === 'device' && (
-            <Field label="Device Type" hint="Optional — narrows this model to a specific device type">
+          {form.target === "device" && (
+            <Field
+              label="Device Type"
+              hint="Optional — narrows this model to a specific device type"
+            >
               <SearchableSelect
-                options={deviceTypes.map((t) => ({ value: t.code, label: t.label }))}
+                options={deviceTypes.map((t) => ({
+                  value: t.code,
+                  label: t.label,
+                }))}
                 value={form.device_type}
                 onChange={(val) => setForm({ ...form, device_type: val })}
                 placeholder="Any device type"
                 searchPlaceholder="Search device types…"
-                emptyMessage={deviceTypes.length === 0 ? 'No device types configured.' : 'No matching device types.'}
+                emptyMessage={
+                  deviceTypes.length === 0
+                    ? "No device types configured."
+                    : "No matching device types."
+                }
               />
             </Field>
           )}
           <Field label="Model Name" required>
-            <TextInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g., Dell OptiPlex 7010" required autoFocus />
+            <TextInput
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="e.g., Dell OptiPlex 7010"
+              required
+              autoFocus
+            />
           </Field>
-          <Field label="Vendor / Manufacturer" hint={vendors.length === 0 ? 'No vendors configured yet — add one under Customization > Vendors.' : undefined}>
+          <Field
+            label="Vendor / Manufacturer"
+            hint={
+              vendors.length === 0
+                ? "No vendors configured yet — add one under Customization > Vendors."
+                : undefined
+            }
+          >
             <SearchableSelect
               options={vendors.map((v) => ({ value: v.label, label: v.label }))}
               value={form.manufacturer}
               onChange={(val) => setForm({ ...form, manufacturer: val })}
               placeholder="No vendor"
               searchPlaceholder="Search vendors…"
-              emptyMessage={vendors.length === 0 ? 'No vendors configured.' : 'No matching vendors.'}
+              emptyMessage={
+                vendors.length === 0
+                  ? "No vendors configured."
+                  : "No matching vendors."
+              }
             />
           </Field>
-          <ImageInput value={form.image} onChange={(dataUrl) => setForm({ ...form, image: dataUrl })} hint="Shown as the default photo when this model is selected" />
+          <ImageInput
+            value={form.image}
+            onChange={(dataUrl) => setForm({ ...form, image: dataUrl })}
+            hint="Shown as the default photo when this model is selected"
+          />
           <Field label="Notes">
-            <TextArea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Additional notes..." />
+            <TextArea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={2}
+              placeholder="Additional notes..."
+            />
           </Field>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
           </div>
         </form>

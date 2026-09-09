@@ -1,15 +1,19 @@
-import type { Metadata } from 'next';
-import '@fontsource-variable/inter';
-import './globals.css';
-import { Providers } from '@/components/Providers';
-import { THEME_INIT_SCRIPT } from '@/context/ThemeContext';
+import type { Metadata } from "next";
+import "@fontsource-variable/inter";
+import "./globals.css";
+import { Providers } from "@/components/Providers";
+import { THEME_INIT_SCRIPT } from "@/context/ThemeContext";
 
 export const metadata: Metadata = {
-  title: 'Goh Betoch Bank | IT Asset Inventory',
-  description: 'GBB IT Asset Inventory Management Portal',
+  title: "Goh Betoch Bank | IT Asset Inventory",
+  description: "GBB IT Asset Inventory Management Portal",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

@@ -4,13 +4,13 @@
 // + SQLite API instead of Supabase Cloud. This means the page
 // components did not need to be rewritten.
 
-import { api, getToken, setToken } from './api';
+import { api, getToken, setToken } from "./api";
 
 // admin  - full system access and management
 // editor - can add and modify asset information
 // reader - view-only access
 // audit  - can view all system information but cannot edit or delete anything
-export type UserRole = 'admin' | 'editor' | 'reader' | 'audit';
+export type UserRole = "admin" | "editor" | "reader" | "audit";
 
 export interface AuthUserLike {
   id: string;
@@ -170,7 +170,11 @@ export interface License {
   // Attached server-side - the PC (if any) this license is currently
   // linked to via pc_registrations.license_id. A license can only be
   // linked to one PC at a time.
-  assigned_pc?: { id: string; hostname: string; asset_id?: string | null } | null;
+  assigned_pc?: {
+    id: string;
+    hostname: string;
+    asset_id?: string | null;
+  } | null;
 }
 
 // The full set of input types an admin can choose from when defining a
@@ -180,25 +184,25 @@ export interface License {
 // on new fields going forward, but parsing always falls back to 'text'
 // for older records saved before a given type existed.
 export type DeviceFieldType =
-  | 'text'
-  | 'long_text'
-  | 'number'
-  | 'decimal'
-  | 'date'
-  | 'datetime'
-  | 'dropdown'
-  | 'multiselect'
-  | 'checkbox'
-  | 'radio'
-  | 'ip_address'
-  | 'mac_address'
-  | 'email'
-  | 'url'
-  | 'image'
-  | 'file'
-  | 'employee'
-  | 'department'
-  | 'branch';
+  | "text"
+  | "long_text"
+  | "number"
+  | "decimal"
+  | "date"
+  | "datetime"
+  | "dropdown"
+  | "multiselect"
+  | "checkbox"
+  | "radio"
+  | "ip_address"
+  | "mac_address"
+  | "email"
+  | "url"
+  | "image"
+  | "file"
+  | "employee"
+  | "department"
+  | "branch";
 
 export interface DeviceTypeField {
   key: string;
@@ -417,7 +421,7 @@ export interface IPSubnet {
 // photo, selectable when registering a PC or device.
 export interface AssetModel {
   id: string;
-  target: 'pc' | 'device';
+  target: "pc" | "device";
   device_type?: string | null;
   name: string;
   manufacturer?: string | null;
@@ -484,7 +488,7 @@ export interface Reminder {
 // updated or deleted - see recordNotification in server/crud.js.
 export interface AdminNotification {
   id: string;
-  action: 'update' | 'delete';
+  action: "update" | "delete";
   table_name: string;
   record_type: string;
   record_id?: string | null;
@@ -506,7 +510,12 @@ export interface IPAddress {
   mac_address?: string | null;
   access_switch_port?: string | null;
   patch_panel_label?: string | null;
-  status: 'unassigned' | 'assigned' | 'reserved' | 'available' | 'decommissioned';
+  status:
+    | "unassigned"
+    | "assigned"
+    | "reserved"
+    | "available"
+    | "decommissioned";
   notes?: string | null;
   extra_data?: string | null;
   registered_by?: string | null;
@@ -524,14 +533,14 @@ function notifyListeners() {
   listeners.forEach((l) => l(currentSession));
 }
 
-type Filter = { col: string; op: 'eq' | 'gte' | 'lte'; value: unknown };
+type Filter = { col: string; op: "eq" | "gte" | "lte"; value: unknown };
 
 class QueryBuilder {
   private table: string;
   private filters: Filter[] = [];
   private orderCol: string | null = null;
   private orderAsc = true;
-  private op: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private op: "select" | "insert" | "update" | "delete" = "select";
   private payload: any = null;
   private wantsSingle = false;
 
@@ -540,22 +549,22 @@ class QueryBuilder {
   }
 
   select(_columns?: string) {
-    this.op = 'select';
+    this.op = "select";
     return this;
   }
 
   eq(col: string, value: unknown) {
-    this.filters.push({ col, op: 'eq', value });
+    this.filters.push({ col, op: "eq", value });
     return this;
   }
 
   gte(col: string, value: unknown) {
-    this.filters.push({ col, op: 'gte', value });
+    this.filters.push({ col, op: "gte", value });
     return this;
   }
 
   lte(col: string, value: unknown) {
-    this.filters.push({ col, op: 'lte', value });
+    this.filters.push({ col, op: "lte", value });
     return this;
   }
 
@@ -566,19 +575,19 @@ class QueryBuilder {
   }
 
   insert(payload: any) {
-    this.op = 'insert';
+    this.op = "insert";
     this.payload = payload;
     return this;
   }
 
   update(payload: any) {
-    this.op = 'update';
+    this.op = "update";
     this.payload = payload;
     return this;
   }
 
   delete() {
-    this.op = 'delete';
+    this.op = "delete";
     return this;
   }
 
@@ -593,26 +602,31 @@ class QueryBuilder {
   }
 
   private idFilterValue(): string | undefined {
-    return this.filters.find((f) => f.col === 'id' && f.op === 'eq')?.value as string | undefined;
+    return this.filters.find((f) => f.col === "id" && f.op === "eq")?.value as
+      | string
+      | undefined;
   }
 
   private buildListQuery(): string {
     const params = new URLSearchParams();
     for (const f of this.filters) {
-      if (f.col === 'id' && f.op === 'eq') continue; // handled as path param elsewhere
-      const key = f.op === 'eq' ? f.col : `${f.col}_${f.op}`;
+      if (f.col === "id" && f.op === "eq") continue; // handled as path param elsewhere
+      const key = f.op === "eq" ? f.col : `${f.col}_${f.op}`;
       params.set(key, String(f.value));
     }
     if (this.orderCol) {
-      params.set('order', this.orderCol);
-      params.set('ascending', String(this.orderAsc));
+      params.set("order", this.orderCol);
+      params.set("ascending", String(this.orderAsc));
     }
     const qs = params.toString();
-    return qs ? `?${qs}` : '';
+    return qs ? `?${qs}` : "";
   }
 
-  private async execute(): Promise<{ data: any; error: { message: string } | null }> {
-    if (this.op === 'select') {
+  private async execute(): Promise<{
+    data: any;
+    error: { message: string } | null;
+  }> {
+    if (this.op === "select") {
       const id = this.idFilterValue();
       if (id && this.wantsSingle) {
         const res = await api.get(`/${this.table}/${id}`);
@@ -630,31 +644,33 @@ class QueryBuilder {
       return res;
     }
 
-    if (this.op === 'insert') {
+    if (this.op === "insert") {
       const res = await api.post(`/${this.table}`, this.payload);
       return res;
     }
 
-    if (this.op === 'update') {
+    if (this.op === "update") {
       const id = this.idFilterValue();
       const res = await api.patch(`/${this.table}/${id}`, this.payload);
       return res;
     }
 
-    if (this.op === 'delete') {
+    if (this.op === "delete") {
       const id = this.idFilterValue();
       const res = await api.del(`/${this.table}/${id}`);
       return res;
     }
 
-    return { data: null, error: { message: 'Unsupported operation' } };
+    return { data: null, error: { message: "Unsupported operation" } };
   }
 
   // Makes the builder awaitable / usable with Promise.all, just like
   // the real Supabase query builder.
   then<TResult1 = any, TResult2 = never>(
-    onfulfilled?: ((value: { data: any; error: any }) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+    onfulfilled?:
+      | ((value: { data: any; error: any }) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled as any, onrejected as any);
   }
@@ -666,7 +682,9 @@ async function restoreSession() {
     currentSession = null;
     return;
   }
-  const res = await api.get<{ user: AuthUserLike; profile: Profile }>('/auth/session');
+  const res = await api.get<{ user: AuthUserLike; profile: Profile }>(
+    "/auth/session",
+  );
   if (res.error || !res.data) {
     setToken(null);
     currentSession = null;
@@ -686,8 +704,11 @@ export const supabase = {
       return { data: { session: currentSession } };
     },
 
-    onAuthStateChange(callback: (event: string, session: AuthSessionLike | null) => void) {
-      const listener: AuthListener = (session) => callback(session ? 'SIGNED_IN' : 'SIGNED_OUT', session);
+    onAuthStateChange(
+      callback: (event: string, session: AuthSessionLike | null) => void,
+    ) {
+      const listener: AuthListener = (session) =>
+        callback(session ? "SIGNED_IN" : "SIGNED_OUT", session);
       listeners.push(listener);
       return {
         data: {
@@ -701,13 +722,23 @@ export const supabase = {
       };
     },
 
-    async signInWithPassword({ email, password }: { email: string; password: string }) {
-      const res = await api.post<{ token: string; user: AuthUserLike; profile: Profile }>('/auth/login', {
+    async signInWithPassword({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) {
+      const res = await api.post<{
+        token: string;
+        user: AuthUserLike;
+        profile: Profile;
+      }>("/auth/login", {
         email,
         password,
       });
       if (res.error || !res.data) {
-        return { error: { message: res.error?.message ?? 'Sign in failed' } };
+        return { error: { message: res.error?.message ?? "Sign in failed" } };
       }
       setToken(res.data.token);
       currentSession = { access_token: res.data.token, user: res.data.user };
@@ -723,7 +754,7 @@ export const supabase = {
     },
 
     async updateUser({ password }: { password: string }) {
-      const res = await api.patch('/auth/password', { password });
+      const res = await api.patch("/auth/password", { password });
       if (res.error) return { error: { message: res.error.message } };
       return { error: null };
     },
@@ -741,28 +772,41 @@ export const supabase = {
           permissions?: string[] | null;
         };
       }) {
-        const res = await api.post<{ user: AuthUserLike }>('/auth/admin/create-user', {
-          email: payload.email,
-          password: payload.password,
-          full_name: payload.user_metadata?.full_name,
-          role: payload.user_metadata?.role,
-          phone: payload.user_metadata?.phone,
-          must_change_password: payload.user_metadata?.must_change_password,
-          permissions: payload.user_metadata?.permissions ?? null,
-        });
+        const res = await api.post<{ user: AuthUserLike }>(
+          "/auth/admin/create-user",
+          {
+            email: payload.email,
+            password: payload.password,
+            full_name: payload.user_metadata?.full_name,
+            role: payload.user_metadata?.role,
+            phone: payload.user_metadata?.phone,
+            must_change_password: payload.user_metadata?.must_change_password,
+            permissions: payload.user_metadata?.permissions ?? null,
+          },
+        );
         if (res.error || !res.data) {
-          return { data: { user: null }, error: { message: res.error?.message ?? 'Could not create user' } };
+          return {
+            data: { user: null },
+            error: { message: res.error?.message ?? "Could not create user" },
+          };
         }
         return { data: { user: res.data.user }, error: null };
       },
 
       // Admin resets another user's password. By default this also
       // forces that user to set a new password at their next login.
-      async resetUserPassword(userId: string, password: string, forceChange = true) {
-        const res = await api.post<{ ok: boolean }>(`/auth/admin/reset-password/${userId}`, {
-          password,
-          must_change_password: forceChange,
-        });
+      async resetUserPassword(
+        userId: string,
+        password: string,
+        forceChange = true,
+      ) {
+        const res = await api.post<{ ok: boolean }>(
+          `/auth/admin/reset-password/${userId}`,
+          {
+            password,
+            must_change_password: forceChange,
+          },
+        );
         if (res.error) return { error: { message: res.error.message } };
         return { error: null };
       },

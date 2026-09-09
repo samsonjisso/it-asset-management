@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useRef, useState } from 'react';
-import { ImagePlus, X, Loader2, Pencil, UploadCloud } from 'lucide-react';
+import { useRef, useState } from "react";
+import { ImagePlus, X, Loader2, Pencil, UploadCloud } from "lucide-react";
 
 interface ImageInputProps {
   value: string | null | undefined;
@@ -13,7 +13,7 @@ interface ImageInputProps {
   // registration forms. 'large': a big, clearly-labeled drag-and-drop
   // dropzone with a large preview - used where the photo deserves more
   // visual prominence (e.g. PC Registration).
-  variant?: 'compact' | 'large';
+  variant?: "compact" | "large";
 }
 
 const MAX_BYTES = 3 * 1024 * 1024; // 3MB, comfortably under the 8MB JSON body limit
@@ -24,21 +24,28 @@ const MAX_BYTES = 3 * 1024 * 1024; // 3MB, comfortably under the 8MB JSON body l
 // endpoint needed). Used to attach an identifying photo to a
 // PC/device/server registration, and to attach a reference photo to a
 // Customization > Asset Model.
-export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, variant = 'compact' }: ImageInputProps) {
+export function ImageInput({
+  value,
+  onChange,
+  label = "Photo",
+  hint,
+  size = 96,
+  variant = "compact",
+}: ImageInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
   const handleFile = (file: File | undefined) => {
-    setError('');
+    setError("");
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file');
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file");
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError('Image is too large (max 3MB)');
+      setError("Image is too large (max 3MB)");
       return;
     }
     setLoading(true);
@@ -49,18 +56,23 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
     };
     reader.onerror = () => {
       setLoading(false);
-      setError('Could not read that image');
+      setError("Could not read that image");
     };
     reader.readAsDataURL(file);
   };
 
-  if (variant === 'large') {
+  if (variant === "large") {
     return (
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {label}
+        </label>
         <div
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
           onDragLeave={() => setDragActive(false)}
           onDrop={(e) => {
             e.preventDefault();
@@ -69,13 +81,15 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
           }}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+          }}
           className={`group relative w-full min-h-[220px] rounded-2xl border-2 border-dashed cursor-pointer flex items-center justify-center overflow-hidden transition-colors ${
             dragActive
-              ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/40'
+              ? "border-brand-500 bg-brand-50 dark:bg-brand-900/40"
               : value
-              ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
-              : 'border-brand-300 bg-gray-50 dark:bg-gray-900 hover:border-brand-500 hover:bg-brand-50/40'
+                ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                : "border-brand-300 bg-gray-50 dark:bg-gray-900 hover:border-brand-500 hover:bg-brand-50/40"
           }`}
         >
           {loading ? (
@@ -85,14 +99,21 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
             </div>
           ) : value ? (
             <>
-              <img src={value} alt="" className="w-full h-full max-h-72 object-contain bg-white dark:bg-gray-900" />
+              <img
+                src={value}
+                alt=""
+                className="w-full h-full max-h-72 object-contain bg-white dark:bg-gray-900"
+              />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
                 <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 text-sm font-medium shadow-soft">
                   <Pencil size={14} /> Change photo
                 </span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onChange(null); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(null);
+                  }}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 text-red-600 text-sm font-medium shadow-soft"
                 >
                   <X size={14} /> Remove
@@ -104,12 +125,20 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
               <div className="w-14 h-14 rounded-full bg-brand-50 dark:bg-brand-900/40 text-brand-600 flex items-center justify-center">
                 <UploadCloud size={26} />
               </div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Click to upload or drag and drop a photo</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">PNG or JPG, up to 3MB</p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Click to upload or drag and drop a photo
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                PNG or JPG, up to 3MB
+              </p>
             </div>
           )}
         </div>
-        {hint && !error && <span className="text-xs text-gray-400 dark:text-gray-500">{hint}</span>}
+        {hint && !error && (
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {hint}
+          </span>
+        )}
         {error && <span className="text-xs text-red-500">{error}</span>}
         <input
           ref={inputRef}
@@ -124,7 +153,9 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {label}
+      </label>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -133,7 +164,10 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
           className="relative shrink-0 rounded-xl border border-dashed border-brand-300 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-brand-500 flex items-center justify-center overflow-hidden transition-colors"
         >
           {loading ? (
-            <Loader2 size={20} className="animate-spin text-gray-400 dark:text-gray-500" />
+            <Loader2
+              size={20}
+              className="animate-spin text-gray-400 dark:text-gray-500"
+            />
           ) : value ? (
             <img src={value} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -146,7 +180,7 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
             onClick={() => inputRef.current?.click()}
             className="text-xs font-medium text-brand-600 hover:text-brand-500 text-left"
           >
-            {value ? 'Change photo' : 'Upload photo'}
+            {value ? "Change photo" : "Upload photo"}
           </button>
           {value && (
             <button
@@ -157,7 +191,11 @@ export function ImageInput({ value, onChange, label = 'Photo', hint, size = 96, 
               <X size={12} /> Remove
             </button>
           )}
-          {hint && !error && <span className="text-xs text-gray-400 dark:text-gray-500">{hint}</span>}
+          {hint && !error && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {hint}
+            </span>
+          )}
           {error && <span className="text-xs text-red-500">{error}</span>}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /** Generic shape for the many admin-managed "label -> code" lookup tables
  *  (departments, server_owners, vendors, floors, ...). The exact
@@ -14,14 +14,16 @@ export const labelCodeSchema = z.looseObject({
 });
 
 export const idParamSchema = z.object({
-  id: z.uuid('Invalid id'),
+  id: z.uuid("Invalid id"),
 });
 
-export const listQuerySchema = z.object({
-  order: z.string().optional(),
-  ascending: z.enum(['true', 'false']).optional(),
-  limit: z.string().regex(/^\d+$/).optional(),
-}).catchall(z.string());
+export const listQuerySchema = z
+  .object({
+    order: z.string().optional(),
+    ascending: z.enum(["true", "false"]).optional(),
+    limit: z.string().regex(/^\d+$/).optional(),
+  })
+  .catchall(z.string());
 
 /** Loose structural check for config tables whose shape is admin-defined
  *  JSON (device_types field lists, pc_form_fields, ip_subnets, asset_models,
