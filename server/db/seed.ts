@@ -436,7 +436,7 @@ async function seedFloors() {
     { code: "3rd_floor", label: "3rd Floor" },
   ];
   for (let i = 0; i < DEFAULT_FLOORS.length; i++) {
-    const f = DEFAULT_FLOORS[i];
+    const f = DEFAULT_FLOORS[i]!;
     await pool.query(
       "INSERT INTO floors (id, code, label, position) VALUES (?, ?, ?, ?)",
       [crypto.randomUUID(), f.code, f.label, i],

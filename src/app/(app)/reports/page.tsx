@@ -1,6 +1,6 @@
 'use client';
 
-import { ReportsPage } from '@/pages/ReportsPage';
+import { ReportsPage } from '@/view-pages/ReportsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

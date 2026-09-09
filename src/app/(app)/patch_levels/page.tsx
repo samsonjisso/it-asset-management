@@ -1,6 +1,6 @@
 'use client';
 
-import { PatchLevelsPage } from '@/pages/PatchLevelsPage';
+import { PatchLevelsPage } from '@/view-pages/PatchLevelsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

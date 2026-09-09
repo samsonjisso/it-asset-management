@@ -1,6 +1,6 @@
 'use client';
 
-import { NotificationsPage } from '@/pages/NotificationsPage';
+import { NotificationsPage } from '@/view-pages/NotificationsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

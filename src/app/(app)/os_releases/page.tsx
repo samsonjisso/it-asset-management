@@ -1,6 +1,6 @@
 'use client';
 
-import { OSReleasesPage } from '@/pages/OSReleasesPage';
+import { OSReleasesPage } from '@/view-pages/OSReleasesPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

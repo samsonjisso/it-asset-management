@@ -1,6 +1,6 @@
 'use client';
 
-import { IPSubnetsPage } from '@/pages/IPSubnetsPage';
+import { IPSubnetsPage } from '@/view-pages/IPSubnetsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

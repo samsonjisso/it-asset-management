@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { DashboardPage } from '@/pages/DashboardPage';
+import { DashboardPage } from '@/view-pages/DashboardPage';
 
 export default function Page() {
   const router = useRouter();

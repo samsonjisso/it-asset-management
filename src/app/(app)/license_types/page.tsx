@@ -1,6 +1,6 @@
 'use client';
 
-import { LicenseTypesPage } from '@/pages/LicenseTypesPage';
+import { LicenseTypesPage } from '@/view-pages/LicenseTypesPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

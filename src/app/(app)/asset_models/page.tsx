@@ -1,6 +1,6 @@
 'use client';
 
-import { AssetModelsPage } from '@/pages/AssetModelsPage';
+import { AssetModelsPage } from '@/view-pages/AssetModelsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

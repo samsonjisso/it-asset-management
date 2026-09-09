@@ -1,6 +1,6 @@
 'use client';
 
-import { ServerTypesPage } from '@/pages/ServerTypesPage';
+import { ServerTypesPage } from '@/view-pages/ServerTypesPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

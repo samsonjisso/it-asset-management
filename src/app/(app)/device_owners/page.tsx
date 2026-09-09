@@ -1,6 +1,6 @@
 'use client';
 
-import { DeviceOwnersPage } from '@/pages/DeviceOwnersPage';
+import { DeviceOwnersPage } from '@/view-pages/DeviceOwnersPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { RemindersPage } from '@/pages/RemindersPage';
+import { RemindersPage } from '@/view-pages/RemindersPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

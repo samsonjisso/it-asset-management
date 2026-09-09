@@ -1,6 +1,6 @@
 'use client';
 
-import { HostLocationsPage } from '@/pages/HostLocationsPage';
+import { HostLocationsPage } from '@/view-pages/HostLocationsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

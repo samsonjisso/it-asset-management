@@ -1,6 +1,6 @@
 'use client';
 
-import { PCFieldsPage } from '@/pages/PCFieldsPage';
+import { PCFieldsPage } from '@/view-pages/PCFieldsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
