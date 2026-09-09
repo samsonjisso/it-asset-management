@@ -1,6 +1,6 @@
 'use client';
 
-import { DepartmentsPage } from '@/pages/DepartmentsPage';
+import { DepartmentsPage } from '@/view-pages/DepartmentsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

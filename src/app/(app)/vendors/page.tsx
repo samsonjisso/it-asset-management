@@ -1,6 +1,6 @@
 'use client';
 
-import { VendorsPage } from '@/pages/VendorsPage';
+import { VendorsPage } from '@/view-pages/VendorsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

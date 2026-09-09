@@ -1,6 +1,6 @@
 'use client';
 
-import { ProfilePage } from '@/pages/ProfilePage';
+import { ProfilePage } from '@/view-pages/ProfilePage';
 
 
 export default function Page() {

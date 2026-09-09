@@ -1,6 +1,6 @@
 'use client';
 
-import { BackupPage } from '@/pages/BackupPage';
+import { BackupPage } from '@/view-pages/BackupPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { PCRegistrationPage } from '@/pages/PCRegistrationPage';
+import { PCRegistrationPage } from '@/view-pages/PCRegistrationPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

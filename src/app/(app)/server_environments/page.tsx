@@ -1,6 +1,6 @@
 'use client';
 
-import { ServerEnvironmentsPage } from '@/pages/ServerEnvironmentsPage';
+import { ServerEnvironmentsPage } from '@/view-pages/ServerEnvironmentsPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

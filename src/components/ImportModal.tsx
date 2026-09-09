@@ -130,6 +130,12 @@ export function ImportModal({
         return;
       }
       const ws = wb.Sheets[firstSheetName];
+      if (!ws) {
+        setParseError("The file appears to be empty.");
+        setRows([]);
+        setParsing(false);
+        return;
+      }
       const aoa = XLSX.utils.sheet_to_json(ws, {
         header: 1,
         defval: "",

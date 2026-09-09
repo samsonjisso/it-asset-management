@@ -1,6 +1,6 @@
 'use client';
 
-import { AboutPage } from '@/pages/AboutPage';
+import { AboutPage } from '@/view-pages/AboutPage';
 
 
 export default function Page() {

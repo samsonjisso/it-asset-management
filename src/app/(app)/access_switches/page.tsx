@@ -1,6 +1,6 @@
 'use client';
 
-import { AccessSwitchesPage } from '@/pages/AccessSwitchesPage';
+import { AccessSwitchesPage } from '@/view-pages/AccessSwitchesPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {

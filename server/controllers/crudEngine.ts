@@ -351,7 +351,7 @@ export async function createRow(
     return rowToJson(rows[0], columns);
   });
 
-  let json = result;
+  let json: Row | null = result;
   if (config.withDepartment) json = await attachDepartment(json);
   if (config.decorate && json) json = await config.decorate(json, pool as any);
   return json!;
@@ -466,7 +466,7 @@ export async function updateRow(
     return { json: updated };
   });
 
-  let out = json;
+  let out: Row | null = json;
   if (config.withDepartment) out = await attachDepartment(out);
   if (config.decorate && out) out = await config.decorate(out, pool as any);
   return out!;

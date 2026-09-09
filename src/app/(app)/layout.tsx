@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Layout } from '@/components/Layout';
-import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage';
+import { ForcePasswordChangePage } from '@/view-pages/ForcePasswordChangePage';
 
 export default function AppShellLayout({ children }: { children: ReactNode }) {
   const { session, profile, loading } = useAuth();

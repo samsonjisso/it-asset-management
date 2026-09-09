@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 import type { PoolConnection } from "mysql2/promise";
 import { pool } from "./db";
 import type { Role } from "./constants";
@@ -52,7 +53,7 @@ export function signToken(
     { sub: profile.id, email: profile.email, role: profile.role },
     JWT_SECRET,
     {
-      expiresIn: JWT_EXPIRES_IN,
+      expiresIn: JWT_EXPIRES_IN as SignOptions["expiresIn"],
     },
   );
 }

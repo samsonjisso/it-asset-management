@@ -1143,6 +1143,8 @@ function validateLicense(body: Row, isInsert: boolean): void {
       body.attachment_name = null;
     } else {
       const match = /^data:([\w./+-]+);base64,(.+)$/s.exec(attachment);
+      const mime = match?.[1];
+      const encoded = match?.[2];
       const allowedMime = [
         "image/jpeg",
         "image/png",
@@ -1152,12 +1154,12 @@ function validateLicense(body: Row, isInsert: boolean): void {
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       ];
-      if (!match || !allowedMime.includes(match[1]))
+      if (!mime || !encoded || !allowedMime.includes(mime))
         throw new ApiError(
           400,
           "Attachment must be an image, PDF, or Word document",
         );
-      const approxBytes = (match[2].length * 3) / 4;
+      const approxBytes = (encoded.length * 3) / 4;
       if (approxBytes > 5 * 1024 * 1024)
         throw new ApiError(400, "Attachment is too large (max 5MB)");
       if (!body.attachment_name || !String(body.attachment_name).trim())

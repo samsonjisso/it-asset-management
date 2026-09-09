@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { LoginPage } from "@/pages/LoginPage";
+import { LoginPage } from "@/view-pages/LoginPage";
 
 export default function Page() {
   const { session, profile, loading } = useAuth();

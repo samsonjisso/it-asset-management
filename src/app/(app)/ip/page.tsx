@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { IPManagementPage } from '@/pages/IPManagementPage';
+import { IPManagementPage } from '@/view-pages/IPManagementPage';
 import { RouteGuard } from '@/components/RouteGuard';
 
 export default function Page() {
