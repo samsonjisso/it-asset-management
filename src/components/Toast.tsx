@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+  ReactNode,
+} from "react";
+import { CheckCircle, XCircle, AlertCircle, Info, X } from "lucide-react";
 
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+type ToastType = "success" | "error" | "warning" | "info";
 
 interface Toast {
   id: string;
@@ -39,28 +46,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const toast = useCallback((message: string, type: ToastType = 'success') => {
-    // Same type+message = the same underlying validation error, so it gets
-    // a stable id. Repeating the same action (e.g. clicking "Sign in" with
-    // bad credentials several times) reuses/updates that one error box
-    // instead of piling up duplicates.
-    const id = `${type}:${message}`;
+  const toast = useCallback(
+    (message: string, type: ToastType = "success") => {
+      // Same type+message = the same underlying validation error, so it gets
+      // a stable id. Repeating the same action (e.g. clicking "Sign in" with
+      // bad credentials several times) reuses/updates that one error box
+      // instead of piling up duplicates.
+      const id = `${type}:${message}`;
 
-    setToasts((prev) => {
-      const existingIndex = prev.findIndex((t) => t.id === id);
-      if (existingIndex === -1) {
-        return [...prev, { id, type, message, bounce: 0 }];
-      }
-      const next = [...prev];
-      const existing = next[existingIndex];
-      next[existingIndex] = { ...existing, bounce: existing.bounce + 1 };
-      return next;
-    });
+      setToasts((prev) => {
+        const existingIndex = prev.findIndex((t) => t.id === id);
+        if (existingIndex === -1) {
+          return [...prev, { id, type, message, bounce: 0 }];
+        }
+        const next = [...prev];
+        const existing = next[existingIndex];
+        if (!existing) return prev;
+        next[existingIndex] = { ...existing, bounce: existing.bounce + 1 };
+        return next;
+      });
 
-    const existingTimeout = timeoutsRef.current.get(id);
-    if (existingTimeout) clearTimeout(existingTimeout);
-    timeoutsRef.current.set(id, setTimeout(() => remove(id), AUTO_DISMISS_MS));
-  }, [remove]);
+      const existingTimeout = timeoutsRef.current.get(id);
+      if (existingTimeout) clearTimeout(existingTimeout);
+      timeoutsRef.current.set(
+        id,
+        setTimeout(() => remove(id), AUTO_DISMISS_MS),
+      );
+    },
+    [remove],
+  );
 
   const icons = {
     success: <CheckCircle size={20} className="text-green-600" />,
@@ -70,10 +84,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   };
 
   const borders = {
-    success: 'border-l-green-600',
-    error: 'border-l-red-600',
-    warning: 'border-l-amber-600',
-    info: 'border-l-blue-600',
+    success: "border-l-green-600",
+    error: "border-l-red-600",
+    warning: "border-l-amber-600",
+    info: "border-l-blue-600",
   };
 
   return (
@@ -93,7 +107,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <p className="text-sm text-gray-800 dark:text-gray-100 flex-1 leading-snug">
               {t.message}
             </p>
-            <button onClick={() => remove(t.id)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors">
+            <button
+              onClick={() => remove(t.id)}
+              className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+            >
               <X size={16} />
             </button>
           </div>
@@ -105,6 +122,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
+  if (!ctx) throw new Error("useToast must be used within ToastProvider");
   return ctx;
 }

@@ -1,7 +1,7 @@
-import type { NextRequest } from 'next/server';
-import { withErrorHandling, jsonOk, NO_STORE_HEADERS } from '@/server/lib/http';
-import { requireAuth } from '@/server/middlewares/withAuth';
-import { listDirectory } from '@/server/controllers/profilesController';
+import type { NextRequest } from "next/server";
+import { withErrorHandling, jsonOk, NO_STORE_HEADERS } from "@/server/lib/http";
+import { requireAuth } from "@/server/middlewares/withAuth";
+import { listDirectory } from "@/server/controllers/profilesController";
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
   await requireAuth(req); // open to every authenticated role

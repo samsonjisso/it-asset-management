@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const serverSchema = z.looseObject({
   server_type: z.string().trim().min(1).max(100).optional(),

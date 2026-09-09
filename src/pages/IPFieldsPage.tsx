@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { Network, Save } from 'lucide-react';
-import { supabase, DeviceTypeField, IpFormFields } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Button } from '../components/FormControls';
-import { StdFieldsEditor } from '../components/StdFieldsEditor';
-import { DeviceFieldEditor } from '../components/DeviceFieldEditor';
+import { useCallback, useEffect, useState } from "react";
+import { Network, Save } from "lucide-react";
+import { supabase, DeviceTypeField, IpFormFields } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/Toast";
+import { Button } from "../components/FormControls";
+import { StdFieldsEditor } from "../components/StdFieldsEditor";
+import { DeviceFieldEditor } from "../components/DeviceFieldEditor";
 import {
   ALL_IP_BASE_FIELDS,
   IP_BASE_FIELD_META,
@@ -15,11 +15,11 @@ import {
   parseIpExtraFields,
   parseIpFieldLabels,
   parseIpRequiredBaseFields,
-} from '../lib/ipFormFields';
+} from "../lib/ipFormFields";
 
 export function IPFieldsPage() {
   const { hasRole } = useAuth();
-  const canManage = hasRole('admin');
+  const canManage = hasRole("admin");
   const { toast } = useToast();
   const [config, setConfig] = useState<IpFormFields | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,8 +31,8 @@ export function IPFieldsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('ip_form_fields').select('*');
-    if (error) toast(error.message, 'error');
+    const { data, error } = await supabase.from("ip_form_fields").select("*");
+    if (error) toast(error.message, "error");
     const row = (data as IpFormFields[] | null)?.[0] ?? null;
     setConfig(row);
     setBaseFields(parseIpBaseFields(row));
@@ -55,15 +55,20 @@ export function IPFieldsPage() {
       fields: JSON.stringify(extraFields),
     };
     const { data, error } = config
-      ? await supabase.from('ip_form_fields').update(payload).eq('id', config.id)
-      : await supabase.from('ip_form_fields').insert({ id: crypto.randomUUID(), ...payload });
+      ? await supabase
+          .from("ip_form_fields")
+          .update(payload)
+          .eq("id", config.id)
+      : await supabase
+          .from("ip_form_fields")
+          .insert({ id: crypto.randomUUID(), ...payload });
     setSaving(false);
     if (error) {
-      toast(error.message, 'error');
+      toast(error.message, "error");
       return;
     }
     if (data) setConfig(data as IpFormFields);
-    toast('IP registration fields updated', 'success');
+    toast("IP registration fields updated", "success");
     await loadData();
   };
 
@@ -75,13 +80,22 @@ export function IPFieldsPage() {
             <Network size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-brand-600">IP Registration Fields</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Customize the Register IP Address form</p>
+            <h1 className="text-xl font-bold text-brand-600">
+              IP Registration Fields
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Customize the Register IP Address form
+            </p>
           </div>
         </div>
         {canManage && (
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || loading}>
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || loading}
+          >
+            <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
           </Button>
         )}
       </div>
@@ -93,27 +107,57 @@ export function IPFieldsPage() {
       ) : !canManage ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 sm:p-6 space-y-6">
           <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border border-brand-600 rounded-lg px-3 py-2">
-            Read-only view — only administrators can change the Register IP Address form.
+            Read-only view — only administrators can change the Register IP
+            Address form.
           </p>
           <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Configurable fields</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              Configurable fields
+            </p>
             <div className="divide-y divide-gray-100 rounded-lg border border-brand-600 overflow-hidden">
               {baseFields.map((key) => (
-                <div key={key} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span className="text-gray-700 dark:text-gray-300">{fieldLabels[key] ?? IP_BASE_FIELD_META[key]?.label ?? key}</span>
-                  {requiredBaseFields.includes(key) && <span className="text-xs font-medium text-red-500">Mandatory</span>}
+                <div
+                  key={key}
+                  className="flex items-center justify-between px-3 py-2 text-sm"
+                >
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {fieldLabels[key] ?? IP_BASE_FIELD_META[key]?.label ?? key}
+                  </span>
+                  {requiredBaseFields.includes(key) && (
+                    <span className="text-xs font-medium text-red-500">
+                      Mandatory
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Custom fields</p>
-            {extraFields.length === 0 ? <p className="text-sm text-gray-400 dark:text-gray-500">No custom fields configured</p> : (
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              Custom fields
+            </p>
+            {extraFields.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                No custom fields configured
+              </p>
+            ) : (
               <div className="divide-y divide-gray-100 rounded-lg border border-brand-600 overflow-hidden">
                 {extraFields.map((field) => (
-                  <div key={field.key} className="flex items-center justify-between px-3 py-2 text-sm">
-                    <span className="text-gray-700 dark:text-gray-300">{field.label} <span className="text-xs text-gray-400">({field.type ?? 'text'})</span></span>
-                    {field.required && <span className="text-xs font-medium text-red-500">Mandatory</span>}
+                  <div
+                    key={field.key}
+                    className="flex items-center justify-between px-3 py-2 text-sm"
+                  >
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {field.label}{" "}
+                      <span className="text-xs text-gray-400">
+                        ({field.type ?? "text"})
+                      </span>
+                    </span>
+                    {field.required && (
+                      <span className="text-xs font-medium text-red-500">
+                        Mandatory
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -123,9 +167,13 @@ export function IPFieldsPage() {
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 sm:p-6 space-y-6">
           <div>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Configurable fields</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+              Configurable fields
+            </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Reorder, rename, hide, or require the ordinary IP registration fields. Subnet, IP Address, and Status stay visible because they power the availability board and duplicate checks.
+              Reorder, rename, hide, or require the ordinary IP registration
+              fields. Subnet, IP Address, and Status stay visible because they
+              power the availability board and duplicate checks.
             </p>
             <StdFieldsEditor
               allKeys={ALL_IP_BASE_FIELDS}
@@ -141,8 +189,13 @@ export function IPFieldsPage() {
             />
           </div>
           <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Your own fields</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Add custom IP inventory fields with validation, choices, employee or department selection, and required flags.</p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+              Your own fields
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Add custom IP inventory fields with validation, choices, employee
+              or department selection, and required flags.
+            </p>
             <DeviceFieldEditor fields={extraFields} onChange={setExtraFields} />
           </div>
         </div>

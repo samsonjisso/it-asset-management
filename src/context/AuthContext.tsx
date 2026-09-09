@@ -1,22 +1,46 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { supabase, Profile, UserRole, AuthSessionLike, AuthUserLike } from '../lib/supabase';
-import { isModuleAllowed } from '../lib/permissions';
-import { UNAUTHORIZED_EVENT } from '../lib/api';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  supabase,
+  Profile,
+  UserRole,
+  AuthSessionLike,
+  AuthUserLike,
+} from "../lib/supabase";
+import { isModuleAllowed } from "../lib/permissions";
+import { UNAUTHORIZED_EVENT } from "../lib/api";
 
 // Auto sign-out after this many milliseconds of no mouse/keyboard/touch
 // activity (resets on every mouse/keyboard/touch/scroll event via
 // IDLE_EVENTS below).
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000;
-const IDLE_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const;
+const IDLE_EVENTS = [
+  "mousemove",
+  "mousedown",
+  "keydown",
+  "scroll",
+  "touchstart",
+  "wheel",
+] as const;
 
 interface AuthContextType {
   session: AuthSessionLike | null;
   user: AuthUserLike | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   hasRole: (...roles: UserRole[]) => boolean;
@@ -35,12 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
       .maybeSingle();
     if (error) {
-      console.error('Profile load error:', error);
+      console.error("Profile load error:", error);
       return;
     }
     setProfile(data as Profile | null);
@@ -56,17 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      })();
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        (async () => {
+          setSession(session);
+          if (session?.user) {
+            await loadProfile(session.user.id);
+          } else {
+            setProfile(null);
+          }
+          setLoading(false);
+        })();
+      },
+    );
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -74,7 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     return { error: error?.message ?? null };
   };
 
@@ -121,8 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
     };
-    window.addEventListener('pageshow', onPageShow);
-    return () => window.removeEventListener('pageshow', onPageShow);
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, [loadProfile]);
 
   // Idle-timeout: automatically sign the user out after IDLE_TIMEOUT_MS of
@@ -143,7 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     resetTimer();
-    IDLE_EVENTS.forEach((evt) => window.addEventListener(evt, resetTimer, { passive: true }));
+    IDLE_EVENTS.forEach((evt) =>
+      window.addEventListener(evt, resetTimer, { passive: true }),
+    );
 
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -160,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const canWrite = () => {
-    return profile ? ['admin', 'editor'].includes(profile.role) : false;
+    return profile ? ["admin", "editor"].includes(profile.role) : false;
   };
 
   const hasModuleAccess = (moduleId: string) => {
@@ -190,6 +221,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

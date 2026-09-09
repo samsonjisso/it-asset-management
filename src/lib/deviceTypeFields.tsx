@@ -1,49 +1,94 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 import {
-  HardDrive, Network, Server, Wifi, Router, Shield, Wind, Battery, Tv,
-  Server as Rack, Camera, Printer, ScanLine, Boxes, Monitor, Cpu, Database,
-  Laptop, Smartphone, Lock, KeyRound, Usb, Radio, Fingerprint, Landmark, Cctv, Cable,
-} from 'lucide-react';
-import { DeviceType, DeviceTypeField, DeviceFieldType } from './supabase';
+  HardDrive,
+  Network,
+  Server,
+  Wifi,
+  Router,
+  Shield,
+  Wind,
+  Battery,
+  Tv,
+  Server as Rack,
+  Camera,
+  Printer,
+  ScanLine,
+  Boxes,
+  Monitor,
+  Cpu,
+  Database,
+  Laptop,
+  Smartphone,
+  Lock,
+  KeyRound,
+  Usb,
+  Radio,
+  Fingerprint,
+  Landmark,
+  Cctv,
+  Cable,
+} from "lucide-react";
+import { DeviceType, DeviceTypeField, DeviceFieldType } from "./supabase";
 
 // Every field type an admin can pick when defining a custom field,
 // grouped for the type picker in the field editor. `needsOptions` means
 // the editor must also collect a list of choices (Dropdown/Multi-select/
 // Radio Button); everything else is a bare label + placeholder.
-export const FIELD_TYPE_OPTIONS: { value: DeviceFieldType; label: string; group: string; needsOptions?: boolean }[] = [
-  { value: 'text', label: 'Text', group: 'Basic' },
-  { value: 'long_text', label: 'Long Text', group: 'Basic' },
-  { value: 'number', label: 'Number', group: 'Basic' },
-  { value: 'decimal', label: 'Decimal', group: 'Basic' },
-  { value: 'date', label: 'Date', group: 'Basic' },
-  { value: 'datetime', label: 'Date & Time', group: 'Basic' },
-  { value: 'dropdown', label: 'Dropdown', group: 'Choice', needsOptions: true },
-  { value: 'multiselect', label: 'Multi-select', group: 'Choice', needsOptions: true },
-  { value: 'checkbox', label: 'Checkbox', group: 'Choice' },
-  { value: 'radio', label: 'Radio Button', group: 'Choice', needsOptions: true },
-  { value: 'ip_address', label: 'IP Address', group: 'Network' },
-  { value: 'mac_address', label: 'MAC Address', group: 'Network' },
-  { value: 'email', label: 'Email', group: 'Contact' },
-  { value: 'url', label: 'URL', group: 'Contact' },
-  { value: 'image', label: 'Image', group: 'Attachment' },
-  { value: 'file', label: 'File Upload', group: 'Attachment' },
-  { value: 'employee', label: 'Employee/User Selection', group: 'Reference' },
-  { value: 'department', label: 'Department Selection', group: 'Reference' },
-  { value: 'branch', label: 'Branch Selection', group: 'Reference' },
+export const FIELD_TYPE_OPTIONS: {
+  value: DeviceFieldType;
+  label: string;
+  group: string;
+  needsOptions?: boolean;
+}[] = [
+  { value: "text", label: "Text", group: "Basic" },
+  { value: "long_text", label: "Long Text", group: "Basic" },
+  { value: "number", label: "Number", group: "Basic" },
+  { value: "decimal", label: "Decimal", group: "Basic" },
+  { value: "date", label: "Date", group: "Basic" },
+  { value: "datetime", label: "Date & Time", group: "Basic" },
+  { value: "dropdown", label: "Dropdown", group: "Choice", needsOptions: true },
+  {
+    value: "multiselect",
+    label: "Multi-select",
+    group: "Choice",
+    needsOptions: true,
+  },
+  { value: "checkbox", label: "Checkbox", group: "Choice" },
+  {
+    value: "radio",
+    label: "Radio Button",
+    group: "Choice",
+    needsOptions: true,
+  },
+  { value: "ip_address", label: "IP Address", group: "Network" },
+  { value: "mac_address", label: "MAC Address", group: "Network" },
+  { value: "email", label: "Email", group: "Contact" },
+  { value: "url", label: "URL", group: "Contact" },
+  { value: "image", label: "Image", group: "Attachment" },
+  { value: "file", label: "File Upload", group: "Attachment" },
+  { value: "employee", label: "Employee/User Selection", group: "Reference" },
+  { value: "department", label: "Department Selection", group: "Reference" },
+  { value: "branch", label: "Branch Selection", group: "Reference" },
 ];
 
-export const FIELD_TYPE_META: Record<DeviceFieldType, { label: string; needsOptions?: boolean }> =
-  Object.fromEntries(FIELD_TYPE_OPTIONS.map((o) => [o.value, { label: o.label, needsOptions: o.needsOptions }])) as Record<
-    DeviceFieldType,
-    { label: string; needsOptions?: boolean }
-  >;
+export const FIELD_TYPE_META: Record<
+  DeviceFieldType,
+  { label: string; needsOptions?: boolean }
+> = Object.fromEntries(
+  FIELD_TYPE_OPTIONS.map((o) => [
+    o.value,
+    { label: o.label, needsOptions: o.needsOptions },
+  ]),
+) as Record<DeviceFieldType, { label: string; needsOptions?: boolean }>;
 
-export function fieldTypeNeedsOptions(type?: DeviceFieldType | string): boolean {
+export function fieldTypeNeedsOptions(
+  type?: DeviceFieldType | string,
+): boolean {
   return !!(type && FIELD_TYPE_META[type as DeviceFieldType]?.needsOptions);
 }
 
 export function fieldTypeLabel(type?: DeviceFieldType | string): string {
-  return (type && FIELD_TYPE_META[type as DeviceFieldType]?.label) || 'Text';
+  return (type && FIELD_TYPE_META[type as DeviceFieldType]?.label) || "Text";
 }
 
 // Icons for the built-in device type codes seeded on first run. Any
@@ -76,36 +121,41 @@ export const deviceTypeIcons: Record<string, ReactNode> = {
 // type. Keys are stored on the device_types row (icon column) so the
 // chosen icon persists and renders everywhere that type appears.
 export const ICON_OPTIONS: { name: string; icon: ReactNode }[] = [
-  { name: 'HardDrive', icon: <HardDrive size={18} /> },
-  { name: 'Network', icon: <Network size={18} /> },
-  { name: 'Server', icon: <Server size={18} /> },
-  { name: 'Boxes', icon: <Boxes size={18} /> },
-  { name: 'Wifi', icon: <Wifi size={18} /> },
-  { name: 'Router', icon: <Router size={18} /> },
-  { name: 'Shield', icon: <Shield size={18} /> },
-  { name: 'Wind', icon: <Wind size={18} /> },
-  { name: 'Battery', icon: <Battery size={18} /> },
-  { name: 'Tv', icon: <Tv size={18} /> },
-  { name: 'Camera', icon: <Camera size={18} /> },
-  { name: 'Cctv', icon: <Cctv size={18} /> },
-  { name: 'Monitor', icon: <Monitor size={18} /> },
-  { name: 'Printer', icon: <Printer size={18} /> },
-  { name: 'ScanLine', icon: <ScanLine size={18} /> },
-  { name: 'Cpu', icon: <Cpu size={18} /> },
-  { name: 'Database', icon: <Database size={18} /> },
-  { name: 'Laptop', icon: <Laptop size={18} /> },
-  { name: 'Smartphone', icon: <Smartphone size={18} /> },
-  { name: 'Lock', icon: <Lock size={18} /> },
-  { name: 'KeyRound', icon: <KeyRound size={18} /> },
-  { name: 'Usb', icon: <Usb size={18} /> },
-  { name: 'Radio', icon: <Radio size={18} /> },
-  { name: 'Fingerprint', icon: <Fingerprint size={18} /> },
-  { name: 'Landmark', icon: <Landmark size={18} /> },
-  { name: 'Cable', icon: <Cable size={18} /> },
+  { name: "HardDrive", icon: <HardDrive size={18} /> },
+  { name: "Network", icon: <Network size={18} /> },
+  { name: "Server", icon: <Server size={18} /> },
+  { name: "Boxes", icon: <Boxes size={18} /> },
+  { name: "Wifi", icon: <Wifi size={18} /> },
+  { name: "Router", icon: <Router size={18} /> },
+  { name: "Shield", icon: <Shield size={18} /> },
+  { name: "Wind", icon: <Wind size={18} /> },
+  { name: "Battery", icon: <Battery size={18} /> },
+  { name: "Tv", icon: <Tv size={18} /> },
+  { name: "Camera", icon: <Camera size={18} /> },
+  { name: "Cctv", icon: <Cctv size={18} /> },
+  { name: "Monitor", icon: <Monitor size={18} /> },
+  { name: "Printer", icon: <Printer size={18} /> },
+  { name: "ScanLine", icon: <ScanLine size={18} /> },
+  { name: "Cpu", icon: <Cpu size={18} /> },
+  { name: "Database", icon: <Database size={18} /> },
+  { name: "Laptop", icon: <Laptop size={18} /> },
+  { name: "Smartphone", icon: <Smartphone size={18} /> },
+  { name: "Lock", icon: <Lock size={18} /> },
+  { name: "KeyRound", icon: <KeyRound size={18} /> },
+  { name: "Usb", icon: <Usb size={18} /> },
+  { name: "Radio", icon: <Radio size={18} /> },
+  { name: "Fingerprint", icon: <Fingerprint size={18} /> },
+  { name: "Landmark", icon: <Landmark size={18} /> },
+  { name: "Cable", icon: <Cable size={18} /> },
 ];
-export const ICON_MAP: Record<string, ReactNode> = Object.fromEntries(ICON_OPTIONS.map((o) => [o.name, o.icon]));
+export const ICON_MAP: Record<string, ReactNode> = Object.fromEntries(
+  ICON_OPTIONS.map((o) => [o.name, o.icon]),
+);
 
-export function getDeviceTypeIcon(deviceTypes: DeviceType[], code: string): ReactNode {
+export function getDeviceTypeIcon(
+  deviceTypes: DeviceType[],
+  code: string,
+): ReactNode {
   const rec = deviceTypes.find((t) => t.code === code);
   if (rec?.icon && ICON_MAP[rec.icon]) return ICON_MAP[rec.icon];
   return deviceTypeIcons[code] ?? <HardDrive size={16} />;
@@ -116,14 +166,23 @@ export function getDeviceTypeIcon(deviceTypes: DeviceType[], code: string): Reac
 // required) on every device type. They follow the exact same
 // include/require/rename pattern as the base fields below, driven by
 // each type's core_fields / required_core_fields / field_labels.
-export const CORE_FIELD_META: Record<string, { label: string; placeholder?: string }> = {
-  device_owner: { label: 'Device Owner' },
+export const CORE_FIELD_META: Record<
+  string,
+  { label: string; placeholder?: string }
+> = {
+  device_owner: { label: "Device Owner" },
   // Sourced from Customization > Departments (the same table PC
   // Registration's "Department/Branch" field draws from) rather than
   // its own lookup table - see department_id on the Device interface.
-  department_id: { label: 'Department' },
-  device_model: { label: 'Device Model (Detail Specification)', placeholder: 'e.g., Dell PowerEdge R740' },
-  hostname: { label: 'Device Hostname', placeholder: 'Insert serial number if no hostname' },
+  department_id: { label: "Department" },
+  device_model: {
+    label: "Device Model (Detail Specification)",
+    placeholder: "e.g., Dell PowerEdge R740",
+  },
+  hostname: {
+    label: "Device Hostname",
+    placeholder: "Insert serial number if no hostname",
+  },
 };
 export const ALL_CORE_FIELDS = Object.keys(CORE_FIELD_META);
 
@@ -131,18 +190,27 @@ export const ALL_CORE_FIELDS = Object.keys(CORE_FIELD_META);
 // show up on the form for a given type is controlled by that type's
 // base_fields list (see parseBaseFields), so e.g. a Fire Extinguisher
 // doesn't get an IP Address / MAC Address field.
-export const BASE_FIELD_META: Record<string, { label: string; placeholder?: string }> = {
-  ip_address: { label: 'Device IP Address' },
-  serial_number: { label: 'Device Serial Number', placeholder: 'Serial number' },
-  mac_address: { label: 'Device MAC Address', placeholder: 'MAC address' },
-  location: { label: 'Location', placeholder: 'Datacenter, floor, or branch' },
-  rack_number: { label: 'Rack Number', placeholder: 'e.g., 1, 2, 3' },
+export const BASE_FIELD_META: Record<
+  string,
+  { label: string; placeholder?: string }
+> = {
+  ip_address: { label: "Device IP Address" },
+  serial_number: {
+    label: "Device Serial Number",
+    placeholder: "Serial number",
+  },
+  mac_address: { label: "Device MAC Address", placeholder: "MAC address" },
+  location: { label: "Location", placeholder: "Datacenter, floor, or branch" },
+  rack_number: { label: "Rack Number", placeholder: "e.g., 1, 2, 3" },
 };
 export const ALL_BASE_FIELDS = Object.keys(BASE_FIELD_META);
 
 // Combined lookup used for rendering labels/placeholders regardless of
 // whether a field key is a "core" field or a "base" field.
-export const STD_FIELD_META: Record<string, { label: string; placeholder?: string }> = {
+export const STD_FIELD_META: Record<
+  string,
+  { label: string; placeholder?: string }
+> = {
   ...CORE_FIELD_META,
   ...BASE_FIELD_META,
 };
@@ -186,23 +254,25 @@ export function parseCoreFields(type?: DeviceType | null): string[] {
 // Which of a type's included core fields are mandatory. Defaults to
 // Owner + Hostname, matching the old always-required behavior.
 export function parseRequiredCoreFields(type?: DeviceType | null): string[] {
-  if (!type?.required_core_fields) return ['device_owner', 'hostname'];
+  if (!type?.required_core_fields) return ["device_owner", "hostname"];
   try {
     const parsed = JSON.parse(type.required_core_fields);
-    return Array.isArray(parsed) ? parsed : ['device_owner', 'hostname'];
+    return Array.isArray(parsed) ? parsed : ["device_owner", "hostname"];
   } catch {
-    return ['device_owner', 'hostname'];
+    return ["device_owner", "hostname"];
   }
 }
 
 // Per-type custom display labels for standard/core fields (e.g. an
 // admin renamed "Location" to "Branch / Floor" for one device type).
 // Keys not present here fall back to STD_FIELD_META's default label.
-export function parseFieldLabels(type?: DeviceType | null): Record<string, string> {
+export function parseFieldLabels(
+  type?: DeviceType | null,
+): Record<string, string> {
   if (!type?.field_labels) return {};
   try {
     const parsed = JSON.parse(type.field_labels);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
@@ -219,7 +289,7 @@ export function parseExtraFields(type?: DeviceType | null): DeviceTypeField[] {
     // than letting the form silently drop the field.
     return parsed.map((f: DeviceTypeField) => ({
       ...f,
-      type: f.type && FIELD_TYPE_META[f.type] ? f.type : 'text',
+      type: f.type && FIELD_TYPE_META[f.type] ? f.type : "text",
       options: Array.isArray(f.options) ? f.options : undefined,
     }));
   } catch {

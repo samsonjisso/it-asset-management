@@ -1,7 +1,15 @@
-'use client';
+"use client";
 
-import { ReactNode, useState, useMemo } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Inbox } from 'lucide-react';
+import { ReactNode, useState, useMemo } from "react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Inbox,
+} from "lucide-react";
 
 export interface Column<T> {
   key: string;
@@ -36,19 +44,19 @@ export function DataTable<T extends { id: string }>({
   data,
   searchKeys = [],
   searchValue,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = "Search...",
   onRowClick,
-  emptyMessage = 'No records found',
+  emptyMessage = "No records found",
   pageSize = 10,
   actions,
   dateFilterKey,
 }: DataTableProps<T>) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const searchEnabled = searchKeys.length > 0 || !!searchValue;
 
@@ -58,7 +66,8 @@ export function DataTable<T extends { id: string }>({
     if (search && searchEnabled) {
       const q = search.toLowerCase();
       result = result.filter((row) => {
-        if (searchValue && searchValue(row).toLowerCase().includes(q)) return true;
+        if (searchValue && searchValue(row).toLowerCase().includes(q))
+          return true;
         return searchKeys.some((key) => {
           const val = row[key];
           return val != null && String(val).toLowerCase().includes(q);
@@ -72,7 +81,8 @@ export function DataTable<T extends { id: string }>({
         if (!val) return false;
         const date = new Date(val as string).getTime();
         if (dateFrom && date < new Date(dateFrom).getTime()) return false;
-        if (dateTo && date > new Date(dateTo).getTime() + 86400000) return false;
+        if (dateTo && date > new Date(dateTo).getTime() + 86400000)
+          return false;
         return true;
       });
     }
@@ -83,25 +93,37 @@ export function DataTable<T extends { id: string }>({
         result.sort((a, b) => {
           const av = col.sortValue!(a);
           const bv = col.sortValue!(b);
-          if (av < bv) return sortDir === 'asc' ? -1 : 1;
-          if (av > bv) return sortDir === 'asc' ? 1 : -1;
+          if (av < bv) return sortDir === "asc" ? -1 : 1;
+          if (av > bv) return sortDir === "asc" ? 1 : -1;
           return 0;
         });
       }
     }
 
     return result;
-  }, [data, search, searchEnabled, searchKeys, searchValue, sortKey, sortDir, columns, dateFilterKey, dateFrom, dateTo]);
+  }, [
+    data,
+    search,
+    searchEnabled,
+    searchKeys,
+    searchValue,
+    sortKey,
+    sortDir,
+    columns,
+    dateFilterKey,
+    dateFrom,
+    dateTo,
+  ]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortDir('asc');
+      setSortDir("asc");
     }
   };
 
@@ -112,7 +134,10 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-1 gap-2 flex-wrap">
           {searchEnabled && (
             <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+              />
               <input
                 value={search}
                 onChange={(e) => {
@@ -167,7 +192,7 @@ export function DataTable<T extends { id: string }>({
                       >
                         {col.label}
                         {sortKey === col.key ? (
-                          sortDir === 'asc' ? (
+                          sortDir === "asc" ? (
                             <ArrowUp size={14} />
                           ) : (
                             <ArrowDown size={14} />
@@ -186,9 +211,15 @@ export function DataTable<T extends { id: string }>({
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="text-center py-16 text-gray-400 dark:text-gray-500">
+                  <td
+                    colSpan={columns.length}
+                    className="text-center py-16 text-gray-400 dark:text-gray-500"
+                  >
                     <div className="flex flex-col items-center gap-2">
-                      <Inbox size={30} className="text-gray-300 dark:text-gray-600" />
+                      <Inbox
+                        size={30}
+                        className="text-gray-300 dark:text-gray-600"
+                      />
                       <span className="text-sm">{emptyMessage}</span>
                     </div>
                   </td>
@@ -198,11 +229,15 @@ export function DataTable<T extends { id: string }>({
                   <tr
                     key={row.id}
                     onClick={() => onRowClick?.(row)}
-                    className={onRowClick ? 'cursor-pointer' : ''}
+                    className={onRowClick ? "cursor-pointer" : ""}
                   >
                     {columns.map((col) => (
                       <td key={col.key} className={col.className}>
-                        {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '')}
+                        {col.render
+                          ? col.render(row)
+                          : String(
+                              (row as Record<string, unknown>)[col.key] ?? "",
+                            )}
                       </td>
                     ))}
                   </tr>
@@ -216,9 +251,18 @@ export function DataTable<T extends { id: string }>({
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Showing <span className="font-medium text-gray-700 dark:text-gray-300">{(page - 1) * pageSize + 1}</span>–
-              <span className="font-medium text-gray-700 dark:text-gray-300">{Math.min(page * pageSize, filtered.length)}</span> of{' '}
-              <span className="font-medium text-gray-700 dark:text-gray-300">{filtered.length}</span>
+              Showing{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {(page - 1) * pageSize + 1}
+              </span>
+              –
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {Math.min(page * pageSize, filtered.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {filtered.length}
+              </span>
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -253,27 +297,42 @@ export function DataTable<T extends { id: string }>({
           </div>
         ) : (
           paginated.map((row) => {
-            const primary = columns.find((c) => c.key !== 'actions');
-            const actionsCol = columns.find((c) => c.key === 'actions');
-            const restCols = columns.filter((c) => c.key !== 'actions' && c.key !== primary?.key);
+            const primary = columns.find((c) => c.key !== "actions");
+            const actionsCol = columns.find((c) => c.key === "actions");
+            const restCols = columns.filter(
+              (c) => c.key !== "actions" && c.key !== primary?.key,
+            );
             return (
               <div
                 key={row.id}
                 onClick={() => onRowClick?.(row)}
-                className={`bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 ${onRowClick ? 'cursor-pointer active:bg-gray-50 dark:active:bg-gray-900' : ''}`}
+                className={`bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-4 ${onRowClick ? "cursor-pointer active:bg-gray-50 dark:active:bg-gray-900" : ""}`}
               >
                 {primary && (
                   <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 pb-2 mb-2 border-b border-gray-100 dark:border-gray-800">
-                    {primary.render ? primary.render(row) : String((row as Record<string, unknown>)[primary.key] ?? '')}
+                    {primary.render
+                      ? primary.render(row)
+                      : String(
+                          (row as Record<string, unknown>)[primary.key] ?? "",
+                        )}
                   </div>
                 )}
                 <dl className="space-y-1.5">
                   {restCols.map((col) => {
-                    const value = col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '');
+                    const value = col.render
+                      ? col.render(row)
+                      : String((row as Record<string, unknown>)[col.key] ?? "");
                     return (
-                      <div key={col.key} className="flex items-start justify-between gap-3 text-sm">
-                        <dt className="text-gray-400 dark:text-gray-500 shrink-0">{col.label}</dt>
-                        <dd className="text-gray-700 dark:text-gray-300 text-right min-w-0">{value}</dd>
+                      <div
+                        key={col.key}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
+                        <dt className="text-gray-400 dark:text-gray-500 shrink-0">
+                          {col.label}
+                        </dt>
+                        <dd className="text-gray-700 dark:text-gray-300 text-right min-w-0">
+                          {value}
+                        </dd>
                       </div>
                     );
                   })}
@@ -295,9 +354,17 @@ export function DataTable<T extends { id: string }>({
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-1 pt-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium text-gray-700 dark:text-gray-300">{(page - 1) * pageSize + 1}</span>–
-              <span className="font-medium text-gray-700 dark:text-gray-300">{Math.min(page * pageSize, filtered.length)}</span> of{' '}
-              <span className="font-medium text-gray-700 dark:text-gray-300">{filtered.length}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {(page - 1) * pageSize + 1}
+              </span>
+              –
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {Math.min(page * pageSize, filtered.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {filtered.length}
+              </span>
             </p>
             <div className="flex items-center gap-1">
               <button

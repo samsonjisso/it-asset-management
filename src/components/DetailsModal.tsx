@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { ReactNode } from 'react';
-import { Modal } from './Modal';
-import { Pencil, Trash2 } from 'lucide-react';
-import { Button } from './FormControls';
+import { ReactNode } from "react";
+import { Modal } from "./Modal";
+import { Pencil, Trash2 } from "lucide-react";
+import { Button } from "./FormControls";
 
 export interface DetailField {
   label: string;
@@ -31,7 +31,7 @@ interface DetailsModalProps {
 }
 
 function isEmpty(value: ReactNode) {
-  return value === null || value === undefined || value === '';
+  return value === null || value === undefined || value === "";
 }
 
 export function DetailsModal({
@@ -42,12 +42,18 @@ export function DetailsModal({
   icon,
   sections,
   onEdit,
-  editLabel = 'Edit Record',
+  editLabel = "Edit Record",
   onDelete,
-  deleteLabel = 'Delete',
+  deleteLabel = "Delete",
 }: DetailsModalProps) {
   return (
-    <Modal open={open} onClose={onClose} title={title} subtitle={subtitle} size="lg">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      size="lg"
+    >
       <div className="space-y-6">
         {icon && (
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 text-white flex items-center justify-center shadow-soft -mt-1 mb-1">
@@ -63,10 +69,20 @@ export function DetailsModal({
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               {section.fields.map((f, j) => (
-                <div key={j} className={f.full ? 'sm:col-span-2' : ''}>
-                  <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">{f.label}</p>
-                  <p className={`text-sm text-gray-800 dark:text-gray-100 break-words ${f.mono ? 'font-mono' : ''}`}>
-                    {isEmpty(f.value) ? <span className="text-gray-300 dark:text-gray-600 italic">Not set</span> : f.value}
+                <div key={j} className={f.full ? "sm:col-span-2" : ""}>
+                  <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                    {f.label}
+                  </p>
+                  <p
+                    className={`text-sm text-gray-800 dark:text-gray-100 break-words ${f.mono ? "font-mono" : ""}`}
+                  >
+                    {isEmpty(f.value) ? (
+                      <span className="text-gray-300 dark:text-gray-600 italic">
+                        Not set
+                      </span>
+                    ) : (
+                      f.value
+                    )}
                   </p>
                 </div>
               ))}
@@ -82,7 +98,9 @@ export function DetailsModal({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Close
+            </Button>
             {onEdit && (
               <Button type="button" variant="primary" onClick={onEdit}>
                 <Pencil size={16} /> {editLabel}

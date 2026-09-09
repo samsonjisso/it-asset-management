@@ -1,16 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, Floor } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { Field, TextInput, Button } from '../components/FormControls';
-import { Plus, Pencil, Trash2, Building, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import { supabase, Floor } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/Toast";
+import { Modal } from "../components/Modal";
+import { Field, TextInput, Button } from "../components/FormControls";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Building,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 
 export function FloorsPage() {
   const { hasRole } = useAuth();
-  const canManage = hasRole('admin');
+  const canManage = hasRole("admin");
   const { toast } = useToast();
   const [floors, setFloors] = useState<Floor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,12 +25,15 @@ export function FloorsPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Floor | null>(null);
-  const [label, setLabel] = useState('');
+  const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('floors').select('*').order('position');
+    const { data } = await supabase
+      .from("floors")
+      .select("*")
+      .order("position");
     if (data) setFloors(data as Floor[]);
     setLoading(false);
   }, []);
@@ -34,7 +44,7 @@ export function FloorsPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setLabel('');
+    setLabel("");
     setModalOpen(true);
   };
 
@@ -47,18 +57,21 @@ export function FloorsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!label.trim()) {
-      toast('Name is required', 'error');
+      toast("Name is required", "error");
       return;
     }
     setSaving(true);
     const { error } = editing
-      ? await supabase.from('floors').update({ label: label.trim() }).eq('id', editing.id)
-      : await supabase.from('floors').insert({ label: label.trim() });
+      ? await supabase
+          .from("floors")
+          .update({ label: label.trim() })
+          .eq("id", editing.id)
+      : await supabase.from("floors").insert({ label: label.trim() });
     setSaving(false);
     if (error) {
-      toast(error.message, 'error');
+      toast(error.message, "error");
     } else {
-      toast(editing ? 'Floor updated' : 'Floor added', 'success');
+      toast(editing ? "Floor updated" : "Floor added", "success");
       setModalOpen(false);
       loadData();
     }
@@ -66,10 +79,10 @@ export function FloorsPage() {
 
   const handleDelete = async (f: Floor) => {
     if (!confirm(`Delete floor "${f.label}"?`)) return;
-    const { error } = await supabase.from('floors').delete().eq('id', f.id);
-    if (error) toast(error.message, 'error');
+    const { error } = await supabase.from("floors").delete().eq("id", f.id);
+    if (error) toast(error.message, "error");
     else {
-      toast('Floor deleted', 'success');
+      toast("Floor deleted", "success");
       loadData();
     }
   };
@@ -81,19 +94,23 @@ export function FloorsPage() {
   const move = async (index: number, dir: -1 | 1) => {
     const target = index + dir;
     if (target < 0 || target >= floors.length || reordering) return;
-    const a = floors[index];
-    const b = floors[target];
+    const a = floors[index]!;
+    const b = floors[target]!;
     setReordering(true);
     const next = [...floors];
-    [next[index], next[target]] = [next[target], next[index]];
+    next[index] = b;
+    next[target] = a;
     setFloors(next);
     const [{ error: errA }, { error: errB }] = await Promise.all([
-      supabase.from('floors').update({ position: b.position }).eq('id', a.id),
-      supabase.from('floors').update({ position: a.position }).eq('id', b.id),
+      supabase.from("floors").update({ position: b.position }).eq("id", a.id),
+      supabase.from("floors").update({ position: a.position }).eq("id", b.id),
     ]);
     setReordering(false);
     if (errA || errB) {
-      toast(errA?.message || errB?.message || 'Could not reorder floors', 'error');
+      toast(
+        errA?.message || errB?.message || "Could not reorder floors",
+        "error",
+      );
       loadData();
     }
   };
@@ -106,9 +123,13 @@ export function FloorsPage() {
             <Building size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-brand-600">Floor / Location Management</h1>
+            <h1 className="text-xl font-bold text-brand-600">
+              Floor / Location Management
+            </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {floors.length} floor{floors.length === 1 ? '' : 's'} available on the PC Registration form for Head Office — use the arrows to reorder
+              {floors.length} floor{floors.length === 1 ? "" : "s"} available on
+              the PC Registration form for Head Office — use the arrows to
+              reorder
             </p>
           </div>
         </div>
@@ -125,7 +146,8 @@ export function FloorsPage() {
         </div>
       ) : floors.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 p-10 text-center text-gray-500 dark:text-gray-400">
-          No floors yet. Add one to make it available on the PC Registration form.
+          No floors yet. Add one to make it available on the PC Registration
+          form.
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-card border border-brand-600 divide-y divide-gray-100 overflow-hidden">
@@ -155,15 +177,27 @@ export function FloorsPage() {
                 <Building size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">{f.label}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{f.code}</p>
+                <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">
+                  {f.label}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                  {f.code}
+                </p>
               </div>
               {canManage && (
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => openEdit(f)} className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg" title="Rename">
+                  <button
+                    onClick={() => openEdit(f)}
+                    className="p-1.5 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg"
+                    title="Rename"
+                  >
                     <Pencil size={16} />
                   </button>
-                  <button onClick={() => handleDelete(f)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                  <button
+                    onClick={() => handleDelete(f)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                    title="Delete"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -173,15 +207,36 @@ export function FloorsPage() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Rename Floor' : 'Add Floor'} size="sm">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? "Rename Floor" : "Add Floor"}
+        size="sm"
+      >
         <form noValidate onSubmit={handleSave} className="space-y-4">
-          <Field label="Name" required hint="e.g., Ground Floor, 1st Floor, 2nd Floor">
-            <TextInput value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g., 4th Floor" required autoFocus />
+          <Field
+            label="Name"
+            required
+            hint="e.g., Ground Floor, 1st Floor, 2nd Floor"
+          >
+            <TextInput
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g., 4th Floor"
+              required
+              autoFocus
+            />
           </Field>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
             </Button>
           </div>
         </form>

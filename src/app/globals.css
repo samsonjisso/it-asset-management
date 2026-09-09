@@ -115,7 +115,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .gbb-fade-in {
-  animation: gbb-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: gbb-fade-in cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Slide-in from right */

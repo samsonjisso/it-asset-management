@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { ZoomIn, X } from 'lucide-react';
+import { useEffect, useRef, useState } from "react";
+import { ZoomIn, X } from "lucide-react";
 
 interface ZoomImageProps {
   src: string;
@@ -24,7 +24,13 @@ interface ZoomImageProps {
 // so even a very large or oddly-shaped photo can be viewed in full by
 // scrolling, rather than being squeezed down or cut off.
 // Used anywhere a device/PC/server registration photo is shown after saving.
-export function ZoomImage({ src, alt = '', size = 160, previewSize = 420, className = '' }: ZoomImageProps) {
+export function ZoomImage({
+  src,
+  alt = "",
+  size = 160,
+  previewSize = 420,
+  className = "",
+}: ZoomImageProps) {
   const [hovering, setHovering] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -33,10 +39,10 @@ export function ZoomImage({ src, alt = '', size = 160, previewSize = 420, classN
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === "Escape") setLightboxOpen(false);
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [lightboxOpen]);
 
   const handleEnter = () => {
@@ -45,9 +51,17 @@ export function ZoomImage({ src, alt = '', size = 160, previewSize = 420, classN
     const margin = 12;
     let left = rect.right + margin;
     let top = rect.top + rect.height / 2 - previewSize / 2;
-    if (left + previewSize > window.innerWidth - margin) left = rect.left - previewSize - margin;
-    if (left < margin) left = Math.max(margin, Math.min(rect.left, window.innerWidth - previewSize - margin));
-    top = Math.max(margin, Math.min(top, window.innerHeight - previewSize - margin));
+    if (left + previewSize > window.innerWidth - margin)
+      left = rect.left - previewSize - margin;
+    if (left < margin)
+      left = Math.max(
+        margin,
+        Math.min(rect.left, window.innerWidth - previewSize - margin),
+      );
+    top = Math.max(
+      margin,
+      Math.min(top, window.innerHeight - previewSize - margin),
+    );
     setCoords({ top, left });
     setHovering(true);
   };
@@ -61,8 +75,13 @@ export function ZoomImage({ src, alt = '', size = 160, previewSize = 420, classN
         onClick={() => setLightboxOpen(true)}
         role="button"
         tabIndex={0}
-        aria-label={alt ? `View full image: ${alt}` : 'View full image'}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLightboxOpen(true); } }}
+        aria-label={alt ? `View full image: ${alt}` : "View full image"}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setLightboxOpen(true);
+          }
+        }}
         className={`relative shrink-0 rounded-lg border border-brand-600 overflow-hidden cursor-zoom-in bg-gray-50 dark:bg-gray-900 group ${className}`}
         style={{ width: size, height: size }}
       >
@@ -78,7 +97,12 @@ export function ZoomImage({ src, alt = '', size = 160, previewSize = 420, classN
       {hovering && !lightboxOpen && (
         <div
           className="fixed z-[70] rounded-xl shadow-2xl ring-1 ring-black/10 border-2 border-brand-600 overflow-auto bg-white dark:bg-gray-900 gbb-pop-in"
-          style={{ top: coords.top, left: coords.left, width: previewSize, maxHeight: previewSize }}
+          style={{
+            top: coords.top,
+            left: coords.left,
+            width: previewSize,
+            maxHeight: previewSize,
+          }}
         >
           {/* Scrollable so a tall/wide image is still viewable in full instead of being squeezed to fit */}
           <img src={src} alt={alt} className="w-full h-auto block" />

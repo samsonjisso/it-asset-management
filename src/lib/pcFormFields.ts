@@ -74,7 +74,8 @@ export function parsePcBaseFields(config?: PcFormFields | null): string[] {
   const parsed = parseJsonValue<unknown>(config.base_fields);
   if (!Array.isArray(parsed)) return ALL_PC_BASE_FIELDS;
   return parsed.filter(
-    (k: unknown): k is string => typeof k === "string" && !!PC_BASE_FIELD_META[k],
+    (k: unknown): k is string =>
+      typeof k === "string" && !!PC_BASE_FIELD_META[k],
   );
 }
 
@@ -84,7 +85,9 @@ export function parsePcRequiredBaseFields(
   if (!config?.required_base_fields) return [];
   const parsed = parseJsonValue<unknown>(config.required_base_fields);
   return Array.isArray(parsed)
-    ? parsed.filter((k: unknown): k is string => typeof k === "string" && k !== "asset_tag")
+    ? parsed.filter(
+        (k: unknown): k is string => typeof k === "string" && k !== "asset_tag",
+      )
     : [];
 }
 
@@ -94,7 +97,7 @@ export function parsePcFieldLabels(
   if (!config?.field_labels) return {};
   const parsed = parseJsonValue<unknown>(config.field_labels);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-    ? parsed as Record<string, string>
+    ? (parsed as Record<string, string>)
     : {};
 }
 

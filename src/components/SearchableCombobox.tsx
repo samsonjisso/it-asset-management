@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, X } from "lucide-react";
 
 export interface SearchableComboboxOption {
   value: string;
@@ -38,15 +38,15 @@ export function SearchableCombobox({
   options,
   value,
   onChange,
-  placeholder = 'Type or select…',
+  placeholder = "Type or select…",
   searchPlaceholder,
-  emptyMessage = 'No matches — keep typing to use a new value.',
+  emptyMessage = "No matches — keep typing to use a new value.",
   required,
   disabled,
   className,
   pattern,
   title,
-  autoComplete = 'off',
+  autoComplete = "off",
 }: SearchableComboboxProps) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -56,16 +56,19 @@ export function SearchableCombobox({
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((o) => `${o.value} ${o.sublabel ?? ''}`.toLowerCase().includes(q));
+    return options.filter((o) =>
+      `${o.value} ${o.sublabel ?? ""}`.toLowerCase().includes(q),
+    );
   }, [options, value]);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node))
+        setOpen(false);
     };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
   useEffect(() => {
@@ -79,25 +82,28 @@ export function SearchableCombobox({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       setOpen(false);
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
       setHighlight((h) => Math.min(h + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlight((h) => Math.max(h - 1, 0));
-    } else if (e.key === 'Enter' && open && filtered[highlight]) {
+    } else if (e.key === "Enter" && open && filtered[highlight]) {
       e.preventDefault();
       pick(filtered[highlight].value);
     }
   };
 
   return (
-    <div ref={rootRef} className={`relative ${className ?? ''}`}>
+    <div ref={rootRef} className={`relative ${className ?? ""}`}>
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
+        <Search
+          size={14}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
+        />
         <input
           ref={inputRef}
           value={value}
@@ -118,7 +124,7 @@ export function SearchableCombobox({
         {value && !disabled && (
           <button
             type="button"
-            onClick={() => onChange('')}
+            onClick={() => onChange("")}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-red-500"
           >
             <X size={14} />
@@ -129,10 +135,16 @@ export function SearchableCombobox({
       {open && !disabled && options.length > 0 && (
         <div className="absolute z-20 mt-1.5 w-full border border-brand-600 rounded-xl bg-white dark:bg-gray-900 shadow-soft p-2">
           {searchPlaceholder && (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 px-1 pb-1">{searchPlaceholder}</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 px-1 pb-1">
+              {searchPlaceholder}
+            </p>
           )}
           <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
-            {filtered.length === 0 && <p className="text-xs text-center text-gray-400 dark:text-gray-500 py-3 px-1">{emptyMessage}</p>}
+            {filtered.length === 0 && (
+              <p className="text-xs text-center text-gray-400 dark:text-gray-500 py-3 px-1">
+                {emptyMessage}
+              </p>
+            )}
             {filtered.map((o, i) => (
               <button
                 key={o.value}
@@ -141,11 +153,15 @@ export function SearchableCombobox({
                 onClick={() => pick(o.value)}
                 onMouseEnter={() => setHighlight(i)}
                 className={`w-full text-left px-2.5 py-2 rounded-lg flex flex-col ${
-                  i === highlight ? 'bg-brand-50 dark:bg-brand-900/40' : ''
-                } ${o.value === value ? 'font-medium text-brand-700 dark:text-brand-300' : 'text-gray-900 dark:text-gray-100'}`}
+                  i === highlight ? "bg-brand-50 dark:bg-brand-900/40" : ""
+                } ${o.value === value ? "font-medium text-brand-700 dark:text-brand-300" : "text-gray-900 dark:text-gray-100"}`}
               >
                 <span className="text-sm truncate">{o.value}</span>
-                {o.sublabel && <span className="text-xs text-gray-400 dark:text-gray-500 truncate">{o.sublabel}</span>}
+                {o.sublabel && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                    {o.sublabel}
+                  </span>
+                )}
               </button>
             ))}
           </div>

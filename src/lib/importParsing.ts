@@ -3,7 +3,7 @@
 // generation are generic (spreadsheet in, plain string-keyed rows
 // out); each page supplies its own column list and per-row
 // validation/mapping logic (see ImportModal.tsx).
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 export interface ImportColumn {
   // Key used internally to look this column's value up in a raw row
@@ -35,29 +35,35 @@ export interface ImportReferenceSheet {
 }
 
 function normalizeHeader(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 // Reads a spreadsheet (.xlsx/.xls/.csv) file into an array of raw rows
 // keyed by the *original* header text found in the file (not by
 // ImportColumn.key - see matchColumnsToHeaders/readRawValue for that
 // translation). Blank trailing rows are dropped.
-export async function parseSpreadsheetFile(file: File): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+export async function parseSpreadsheetFile(
+  file: File,
+): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return { headers: [], rows: [] };
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return { headers: [], rows: [] };
 
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '', raw: false });
-  const headers = raw.length > 0 ? Object.keys(raw[0]) : [];
+  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: "",
+    raw: false,
+  });
+  const headers = raw[0] ? Object.keys(raw[0]) : [];
   const rows = raw
     .map((r) => {
       const row: Record<string, string> = {};
-      for (const h of headers) row[h] = String(r[h] ?? '').trim();
+      for (const h of headers) row[h] = String(r[h] ?? "").trim();
       return row;
     })
-    .filter((row) => Object.values(row).some((v) => v.trim() !== ''));
+    .filter((row) => Object.values(row).some((v) => v.trim() !== ""));
   return { headers, rows };
 }
 
@@ -66,12 +72,17 @@ export async function parseSpreadsheetFile(file: File): Promise<{ headers: strin
 // column's label or any alias against the row's headers
 // case-/whitespace-insensitively, so column order and minor header
 // spelling differences don't matter.
-export function readRawValue(row: Record<string, string>, column: ImportColumn): string {
-  const candidates = [column.label, ...(column.aliases ?? [])].map(normalizeHeader);
+export function readRawValue(
+  row: Record<string, string>,
+  column: ImportColumn,
+): string {
+  const candidates = [column.label, ...(column.aliases ?? [])].map(
+    normalizeHeader,
+  );
   for (const header of Object.keys(row)) {
-    if (candidates.includes(normalizeHeader(header))) return row[header] ?? '';
+    if (candidates.includes(normalizeHeader(header))) return row[header] ?? "";
   }
-  return '';
+  return "";
 }
 
 // Builds and downloads a blank template workbook: one sheet with the
@@ -81,20 +92,23 @@ export function readRawValue(row: Record<string, string>, column: ImportColumn):
 export function downloadImportTemplate(
   filename: string,
   columns: ImportColumn[],
-  referenceSheets: ImportReferenceSheet[] = []
+  referenceSheets: ImportReferenceSheet[] = [],
 ) {
   const wb = XLSX.utils.book_new();
   const headerRow = columns.map((c) => (c.required ? `${c.label} *` : c.label));
   const ws = XLSX.utils.aoa_to_sheet([headerRow]);
-  ws['!cols'] = columns.map((c) => ({ wch: Math.max(14, c.label.length + 2) }));
-  XLSX.utils.book_append_sheet(wb, ws, 'Import');
+  ws["!cols"] = columns.map((c) => ({ wch: Math.max(14, c.label.length + 2) }));
+  XLSX.utils.book_append_sheet(wb, ws, "Import");
 
   for (const ref of referenceSheets) {
     if (ref.values.length === 0) continue;
-    const refWs = XLSX.utils.aoa_to_sheet([[ref.columnHeader], ...ref.values.map((v) => [v])]);
-    refWs['!cols'] = [{ wch: Math.max(14, ref.columnHeader.length + 2) }];
+    const refWs = XLSX.utils.aoa_to_sheet([
+      [ref.columnHeader],
+      ...ref.values.map((v) => [v]),
+    ]);
+    refWs["!cols"] = [{ wch: Math.max(14, ref.columnHeader.length + 2) }];
     // Sheet names are capped at 31 chars and can't contain []:*?/\
-    const safeName = ref.sheetName.replace(/[[\]:*?/\\]/g, '').slice(0, 31);
+    const safeName = ref.sheetName.replace(/[[\]:*?/\\]/g, "").slice(0, 31);
     XLSX.utils.book_append_sheet(wb, refWs, safeName);
   }
 
