@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
+dotenv.config({ path: "server/.env" });
 
 // A single pooled connection, shared across every Route Handler in this
 // process (Next.js reuses the Node.js process between requests in both
