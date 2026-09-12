@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { GBBLogo } from "./GBBLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { useToast } from "./Toast";
-import { markAllNotificationsRead } from "../lib/api";
+import { api, markAllNotificationsRead } from "../lib/api";
 import {
   supabase,
   Reminder,
@@ -378,10 +378,14 @@ export function Layout({
   }, [visibleItems.length, visibleCustomizationItems.length]);
 
   useEffect(() => {
+    if (!profile) {
+      setReminders([]);
+      return;
+    }
     loadReminders();
     const interval = setInterval(loadReminders, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [profile?.id]);
 
   // Admin Change Notifications: only fetched for accounts that can
   // actually see the Notifications module (admin/audit, and not
@@ -402,19 +406,20 @@ export function Layout({
   }, [canSeeNotifications]);
 
   const loadNotifications = async () => {
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("is_read", false)
-      .order("created_at", { ascending: false });
-    if (data) setNotifications((data as AdminNotification[]).slice(0, 20));
+    const { data, error } = await api.get<AdminNotification[]>(
+      "/notifications?is_read=false&limit=20",
+    );
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
+    if (data) setNotifications(data.slice(0, 20));
   };
 
   const markNotificationRead = async (id: string) => {
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", id);
+    const { error } = await api.patch(`/notifications/${id}`, {
+      is_read: true,
+    });
     // Only drop it from the local list once the server has actually
     // confirmed the read — otherwise a failed request looks like it
     // worked locally, and the very next poll (loadNotifications, every
@@ -453,20 +458,30 @@ export function Layout({
   const loadReminders = async () => {
     const now = new Date();
     const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const { data } = await supabase
-      .from("reminders")
-      .select("*")
-      .eq("is_dismissed", false)
-      .lte("remind_at", oneWeekLater.toISOString())
-      .order("remind_at", { ascending: true });
-    if (data) setReminders(data as Reminder[]);
+    const params = new URLSearchParams({
+      is_dismissed: "false",
+      remind_at_lte: oneWeekLater.toISOString(),
+      order: "remind_at",
+      ascending: "true",
+    });
+    const { data, error } = await api.get<Reminder[]>(
+      `/reminders?${params.toString()}`,
+    );
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
+    if (data) setReminders(data);
   };
 
   const dismissReminder = async (id: string) => {
-    await supabase
-      .from("reminders")
-      .update({ is_dismissed: true })
-      .eq("id", id);
+    const { error } = await api.patch(`/reminders/${id}`, {
+      is_dismissed: true,
+    });
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
     setReminders((prev) => prev.filter((r) => r.id !== id));
   };
 
@@ -1011,9 +1026,9 @@ export function Layout({
             </div>
           )}
 
-          <button className="hidden sm:flex p-2 rounded text-white/70 hover:bg-white/10 transition-colors">
+          {/* <button className="hidden sm:flex p-2 rounded text-white/70 hover:bg-white/10 transition-colors">
             <HelpCircle size={17} />
-          </button>
+          </button> */}
 
           {/* User menu */}
           <div className="relative">

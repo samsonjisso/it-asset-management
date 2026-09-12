@@ -72,7 +72,7 @@ export function RemindersPage() {
     setModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.title || !form.remind_at) {
       toast("Title and reminder date are required", "error");
