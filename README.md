@@ -60,7 +60,32 @@ what didn't, and the handful of judgment calls made along the way.
   logic **untouched** — see "What in the frontend is unchanged" below.
 - **Env vars:** the one `VITE_API_URL` became `NEXT_PUBLIC_API_URL`
   (`.env.example`). Standalone database scripts load `.env.local` first,
-  then fall back to `.env`, matching Next.js local development behavior.
+  then fall back to `.env` and `server/.env`, matching Next.js local
+  development behavior.
+
+### Troubleshooting "Server Down"
+
+The frontend and backend run in the same Next.js process. The frontend API
+URL must therefore be same-origin:
+
+```env
+NEXT_PUBLIC_API_URL=/api
+```
+
+MariaDB settings can be kept in `server/.env`. The Docker MariaDB container
+must publish port `3306` to the host when the app runs outside Docker, for
+example `0.0.0.0:3306->3306/tcp`. Restart `bun dev` after changing any
+`NEXT_PUBLIC_*` variable because Next.js embeds these values when it starts.
+
+Verify the application and database connection with:
+
+```bash
+curl http://localhost:3001/api/health
+```
+
+The expected response is `{"ok":true,"database":"connected"}`. If port
+`3000` is already occupied, start the app on another port and use that port
+in the health-check command.
 
 ## What in the frontend is unchanged (on purpose)
 
