@@ -28,7 +28,6 @@ async function slugifyCode(
       .replace(/^_+|_+$/g, "") || fallback;
   let code = base;
   let n = 2;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const [rows] = await conn.query<any[]>(
       `SELECT 1 FROM ${table} WHERE code = ?`,

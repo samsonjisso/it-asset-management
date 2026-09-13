@@ -85,6 +85,7 @@ export function parsePermissions(
 // rate limiting.
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 export const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+export const AUTH_COOKIE_NAME = "gbb_session";
 
 export function isAccountLocked(
   row: Pick<ProfileRow, "locked_until"> | undefined,
@@ -126,18 +127,11 @@ export async function isOwner(id: string): Promise<boolean> {
   return !!rows[0]?.is_owner;
 }
 
-/**
- * Verifies the bearer token on a request and re-reads role/permissions
- * from the database (never trusted from the JWT itself, which can be
- * hours old) so that an admin restricting access or disabling an
- * account takes effect immediately. Returns null if not authenticated.
- */
+/** Verifies the httpOnly session cookie and re-reads authorization state. */
 export async function authenticate(
-  authorizationHeader: string | null,
+  cookieToken: string | null,
 ): Promise<AuthContext | null> {
-  const token = authorizationHeader?.startsWith("Bearer ")
-    ? authorizationHeader.slice(7)
-    : null;
+  const token = cookieToken;
   if (!token) return null;
   let payload: JwtPayload;
   try {

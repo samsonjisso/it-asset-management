@@ -4,7 +4,7 @@
 // + SQLite API instead of Supabase Cloud. This means the page
 // components did not need to be rewritten.
 
-import { api, getToken, setToken } from "./api";
+import { api } from "./api";
 
 // admin  - full system access and management
 // editor - can add and modify asset information
@@ -680,20 +680,14 @@ class QueryBuilder {
 }
 
 async function restoreSession() {
-  const token = getToken();
-  if (!token) {
-    currentSession = null;
-    return;
-  }
   const res = await api.get<{ user: AuthUserLike; profile: Profile }>(
     "/auth/session",
   );
   if (res.error || !res.data) {
-    setToken(null);
     currentSession = null;
     return;
   }
-  currentSession = { access_token: token, user: res.data.user };
+  currentSession = { access_token: "cookie", user: res.data.user };
 }
 
 export const supabase = {
@@ -733,7 +727,6 @@ export const supabase = {
       password: string;
     }) {
       const res = await api.post<{
-        token: string;
         user: AuthUserLike;
         profile: Profile;
       }>("/auth/login", {
@@ -743,14 +736,13 @@ export const supabase = {
       if (res.error || !res.data) {
         return { error: { message: res.error?.message ?? "Sign in failed" } };
       }
-      setToken(res.data.token);
-      currentSession = { access_token: res.data.token, user: res.data.user };
+      currentSession = { access_token: "cookie", user: res.data.user };
       notifyListeners();
       return { error: null };
     },
 
     async signOut() {
-      setToken(null);
+      await api.post("/auth/logout");
       currentSession = null;
       notifyListeners();
       return { error: null };

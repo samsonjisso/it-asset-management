@@ -60,6 +60,23 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Immutable record of data mutations for accountability and investigations.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id CHAR(36) PRIMARY KEY,
+  action ENUM('create', 'update', 'delete', 'backup_restore') NOT NULL,
+  table_name VARCHAR(100) NOT NULL,
+  record_id CHAR(36) NULL,
+  record_label VARCHAR(255) NULL,
+  before_data JSON NULL,
+  after_data JSON NULL,
+  actor_id CHAR(36) NULL,
+  actor_name VARCHAR(255) NOT NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_audit_log_actor FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
+CREATE INDEX idx_audit_log_table_record ON audit_log(table_name, record_id);
+
 CREATE TABLE IF NOT EXISTS departments (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,

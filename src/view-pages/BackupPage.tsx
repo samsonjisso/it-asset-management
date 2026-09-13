@@ -28,45 +28,16 @@ export function BackupPage() {
     { name: "departments", label: "Departments" },
   ];
 
-  const exportAllCSV = async () => {
+  const exportFullBackup = async () => {
     setExporting(true);
     try {
-      const allData: Record<string, any[]> = {};
-      for (const table of tables) {
-        const { data, error } = await supabase.from(table.name).select("*");
-        if (error) throw error;
-        allData[table.label] = data ?? [];
-      }
-
-      // Create a combined CSV with sections
-      let csvContent = "";
-      for (const [label, rows] of Object.entries(allData)) {
-        csvContent += `\n=== ${label} ===\n`;
-        if (rows.length === 0) {
-          csvContent += "No data\n";
-          continue;
-        }
-        const headers = Object.keys(rows[0]);
-        csvContent += headers.join(",") + "\n";
-        rows.forEach((row) => {
-          csvContent +=
-            headers
-              .map((h) => {
-                const val = row[h];
-                if (val === null || val === undefined) return "";
-                if (typeof val === "object")
-                  return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
-                return `"${String(val).replace(/"/g, '""')}"`;
-              })
-              .join(",") + "\n";
-        });
-      }
-
-      const blob = new Blob([csvContent], { type: "text/csv" });
+      const response = await fetch("/api/backup", { credentials: "same-origin" });
+      if (!response.ok) throw new Error((await response.json()).error || "Backup failed");
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `GBB_IT_Asset_Backup_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `GBB_MariaDB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast("Full backup exported successfully", "success");
@@ -114,26 +85,32 @@ export function BackupPage() {
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const confirmed = window.confirm(
+      "Restore this backup? Current application data will be replaced. This cannot be undone.",
+    );
+    if (!confirmed) {
+      e.target.value = "";
+      return;
+    }
     setImporting(true);
     try {
       const text = await file.text();
-      // Parse CSV - simple parser for backup files
-      const lines = text
-        .split("\n")
-        .filter((l) => l.trim() && !l.startsWith("==="));
-      if (lines.length < 2) {
-        toast("Invalid backup file", "error");
-        setImporting(false);
-        return;
-      }
-      toast(
-        "Import feature: Please use individual table CSV exports for importing data",
-        "info",
-      );
+      const backup = JSON.parse(text);
+      const response = await fetch("/api/backup", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(backup),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Restore failed");
+      toast("Database backup restored successfully", "success");
     } catch (err: any) {
       toast(err.message ?? "Import failed", "error");
+    } finally {
+      e.target.value = "";
+      setImporting(false);
     }
-    setImporting(false);
   };
 
   return (
@@ -159,15 +136,14 @@ export function BackupPage() {
           <div className="flex-1">
             <h3 className="text-lg font-semibold">Full System Backup</h3>
             <p className="text-white/80 text-sm mt-1">
-              Download a complete backup of all IT asset data (PCs, IP
-              Addresses, Licenses, Devices, Servers, Reminders, Departments) as
-              a single CSV file.
+              Download a complete MariaDB backup of all application data as a
+              versioned JSON file. Restore it only on the same application schema.
             </p>
             <Button
               variant="gold"
               size="md"
               className="mt-4"
-              onClick={exportAllCSV}
+              onClick={exportFullBackup}
               disabled={exporting}
             >
               {exporting ? (
@@ -222,12 +198,12 @@ export function BackupPage() {
             className="mx-auto text-gray-400 dark:text-gray-500 mb-3"
           />
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            Select a CSV backup file to import data
+            Select a JSON MariaDB backup file to restore the database
           </p>
           <label className="inline-flex">
             <input
               type="file"
-              accept=".csv"
+              accept=".json,application/json"
               onChange={handleImport}
               className="hidden"
               disabled={importing}

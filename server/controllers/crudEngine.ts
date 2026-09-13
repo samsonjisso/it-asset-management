@@ -196,6 +196,37 @@ export async function recordNotification(
   }
 }
 
+export async function recordAudit(
+  conn: PoolConnection,
+  opts: {
+    action: "create" | "update" | "delete";
+    tableName: string;
+    recordId: string | null;
+    recordLabel: string | null;
+    beforeData: Row | null;
+    afterData: Row | null;
+    actor: AuthContext;
+  },
+): Promise<void> {
+  await conn.query(
+    `INSERT INTO audit_log
+      (id, action, table_name, record_id, record_label, before_data, after_data, actor_id, actor_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      crypto.randomUUID(),
+      opts.action,
+      opts.tableName,
+      opts.recordId,
+      opts.recordLabel,
+      opts.beforeData ? JSON.stringify(opts.beforeData) : null,
+      opts.afterData ? JSON.stringify(opts.afterData) : null,
+      opts.actor.id,
+      opts.actor.full_name || opts.actor.email || "Unknown user",
+      nowSql(),
+    ],
+  );
+}
+
 // ---------------------------------------------------------------------
 // List / Get
 // ---------------------------------------------------------------------
@@ -356,7 +387,17 @@ export async function createRow(
       `SELECT * FROM ${config.table} WHERE id = ?`,
       [id],
     );
-    return rowToJson(rows[0], columns);
+    const created = rowToJson(rows[0], columns);
+    await recordAudit(conn, {
+      action: "create",
+      tableName: config.table,
+      recordId: id,
+      recordLabel: config.notify?.label(created || {}) || id,
+      beforeData: null,
+      afterData: created,
+      actor: auth,
+    });
+    return created;
   });
 
   let json: Row | null = result;
@@ -403,17 +444,16 @@ export async function updateRow(
       throw new ApiError(400, "No valid fields to update");
     }
 
-    const beforeRow = config.notify
-      ? rowToJson(
-          (
-            await conn.query<any[]>(
-              `SELECT * FROM ${config.table} WHERE id = ?`,
-              [id],
-            )
-          )[0][0],
-          columns,
+    const beforeRow = rowToJson(
+      (
+        await conn.query<any[]>(
+          `SELECT * FROM ${config.table} WHERE id = ?`,
+          [id],
         )
-      : null;
+      )[0][0],
+      columns,
+    );
+    if (!beforeRow) throw new ApiError(404, "Not found");
 
     const setCols = [...updateCols];
     const values = updateCols.map((c) => {
@@ -448,6 +488,16 @@ export async function updateRow(
       [id],
     );
     const updated = rowToJson(rows[0], columns)!;
+
+    await recordAudit(conn, {
+      action: "update",
+      tableName: config.table,
+      recordId: id,
+      recordLabel: config.notify?.label(updated) || id,
+      beforeData: beforeRow,
+      afterData: updated,
+      actor: auth,
+    });
 
     let summary: string | null = null;
     if (config.notify && beforeRow) {
@@ -494,7 +544,7 @@ export async function deleteRow(
   const columns = await getColumns(config.table);
 
   await withTransaction(async (conn) => {
-    const needsExisting = !!config.beforeDelete || !!config.notify;
+    const needsExisting = true;
     let existing: Row | null = null;
     if (needsExisting) {
       const [rows] = await conn.query<any[]>(
@@ -523,5 +573,14 @@ export async function deleteRow(
         actor: auth,
       });
     }
+    await recordAudit(conn, {
+      action: "delete",
+      tableName: config.table,
+      recordId: id,
+      recordLabel: config.notify?.label(existing || {}) || id,
+      beforeData: existing,
+      afterData: null,
+      actor: auth,
+    });
   });
 }

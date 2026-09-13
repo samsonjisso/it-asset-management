@@ -25,6 +25,7 @@ export const MODULE_KEYS = [
   "users",
   "backup",
   "notifications",
+  "audit",
   "departments",
   "license_types",
   "server_owners",

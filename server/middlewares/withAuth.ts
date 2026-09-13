@@ -14,7 +14,7 @@ import { ApiError } from "@/server/lib/http";
  *   const auth = await requireAuth(req);
  */
 export async function requireAuth(req: NextRequest): Promise<AuthContext> {
-  const auth = await authenticate(req.headers.get("authorization"));
+  const auth = await authenticate(req.cookies.get("gbb_session")?.value || null);
   if (!auth) throw new ApiError(401, "Not authenticated");
   return auth;
 }
