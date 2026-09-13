@@ -408,8 +408,21 @@ export function Layout({
       return;
     }
     loadNotifications();
+    const stream = new EventSource("/api/notifications/stream");
+    const handleNotifications = (event: MessageEvent<string>) => {
+      try {
+        setNotifications(JSON.parse(event.data) as AdminNotification[]);
+      } catch {
+        // Keep the last valid notification list if an incomplete event arrives.
+      }
+    };
+    stream.addEventListener("notifications", handleNotifications);
     const interval = setInterval(loadNotifications, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      stream.removeEventListener("notifications", handleNotifications);
+      stream.close();
+      clearInterval(interval);
+    };
   }, [canSeeNotifications]);
 
   const loadNotifications = async () => {
