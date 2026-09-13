@@ -5,6 +5,8 @@ import { Providers } from "@/components/Providers";
 import { THEME_INIT_SCRIPT } from "@/context/ThemeContext";
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.ico",},
   title: "Goh Betoch Bank | IT Asset Inventory",
   description: "GBB IT Asset Inventory Management Portal",
 };
