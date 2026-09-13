@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const MEMORY_GB_REGEX = /^\d+(?:\.\d+)?$/;
+
 // Field-level shape validation. Cross-field business rules (duplicate
 // detection, license linking, IP linking, per-admin custom required
 // fields from pc_form_fields) are enforced in
@@ -15,7 +17,19 @@ export const pcRegistrationSchema = z.looseObject({
   mac_address: z.string().max(64).nullable().optional(),
   product_key: z.string().max(255).nullable().optional(),
   cpu: z.string().max(255).nullable().optional(),
-  memory_detail: z.string().max(255).nullable().optional(),
+  memory_detail: z
+    .string()
+    .trim()
+    .max(255)
+    .nullable()
+    .optional()
+    .refine(
+      (value) =>
+        value == null ||
+        value === "" ||
+        (MEMORY_GB_REGEX.test(value) && Number(value) > 0),
+      "Memory capacity must be a positive number in GB",
+    ),
   generation_detail: z.string().max(255).nullable().optional(),
   ip_address: z.string().max(45).nullable().optional(),
   owner_name: z.string().max(255).nullable().optional(),

@@ -1,5 +1,6 @@
 import type { PoolConnection, Pool } from "mysql2/promise";
 import { nowSql } from "@/server/lib/db";
+import { generateAssetId } from "@/server/lib/assetId";
 import { ApiError } from "@/server/lib/http";
 import {
   WRITE_ROLES,
@@ -830,6 +831,54 @@ async function validatePcLicense(
   body.product_key = license.license_key || null;
 }
 
+async function ensurePcLicenseRecord(
+  body: Row,
+  conn: PoolConnection,
+): Promise<void> {
+  if (body.license_id) return;
+  const productKey = body.product_key
+    ? String(body.product_key).trim()
+    : "";
+  if (!productKey) return;
+
+  const [existingRows] = await conn.query<any[]>(
+    `SELECT id FROM licenses
+     WHERE license_key IS NOT NULL AND TRIM(license_key) != ''
+       AND LOWER(TRIM(license_key)) = LOWER(?)
+     LIMIT 1`,
+    [productKey],
+  );
+  if (existingRows[0]) {
+    body.license_id = existingRows[0].id;
+    body.product_key = productKey;
+    return;
+  }
+
+  const licenseId = crypto.randomUUID();
+  const assetId = await generateAssetId(conn, "licenses", {
+    license_type: "other",
+  });
+  const timestamp = nowSql();
+  await conn.query(
+    `INSERT INTO licenses
+     (id, asset_id, license_name, license_type, license_subtype,
+      license_key, number_of_licenses, effective_date, expiry_date,
+      alert_sent, registered_by, created_at, updated_at)
+     VALUES (?, ?, ?, 'other', 'Other', ?, 1, NULL, NULL, 0, ?, ?, ?)`,
+    [
+      licenseId,
+      assetId,
+      `PC License - ${body.hostname ? String(body.hostname).trim() : "Manual Entry"}`,
+      productKey,
+      body.registered_by || null,
+      timestamp,
+      timestamp,
+    ],
+  );
+  body.license_id = licenseId;
+  body.product_key = productKey;
+}
+
 interface DuplicateMatch {
   field: string;
   label: string;
@@ -966,11 +1015,11 @@ async function checkLicenseDuplicate(
 }
 
 // ---------------------------------------------------------------------
-// IP linking (pc_registrations / devices <-> ip_addresses)
+// IP linking (pc_registrations / devices / servers <-> ip_addresses)
 // ---------------------------------------------------------------------
 
 async function checkAndLinkIp(
-  table: "pc_registrations" | "devices",
+  table: "pc_registrations" | "devices" | "servers",
   body: Row,
   conn: PoolConnection,
   currentId: string | null,
@@ -995,17 +1044,25 @@ async function checkAndLinkIp(
   const ipRecord = ipRows[0];
 
   if (ipRecord) {
-    const otherTable =
-      table === "pc_registrations" ? "devices" : "pc_registrations";
-    const [sameRows] = await conn.query<any[]>(
-      `SELECT id, hostname FROM ${table} WHERE ip_id = ? AND id != ?`,
-      [ipRecord.id, currentId || ""],
-    );
-    const [otherRows] = await conn.query<any[]>(
-      `SELECT id, hostname FROM ${otherTable} WHERE ip_id = ?`,
-      [ipRecord.id],
-    );
-    const conflict = sameRows[0] || otherRows[0];
+    const assetTables: Array<"pc_registrations" | "devices" | "servers"> = [
+      "pc_registrations",
+      "devices",
+      "servers",
+    ];
+    let conflict: any;
+    for (const assetTable of assetTables) {
+      const currentFilter = assetTable === table ? " AND id != ?" : "";
+      const [rows] = await conn.query<any[]>(
+        `SELECT id, hostname FROM ${assetTable} WHERE ip_id = ?${currentFilter}`,
+        assetTable === table
+          ? [ipRecord.id, currentId || ""]
+          : [ipRecord.id],
+      );
+      if (rows[0]) {
+        conflict = rows[0];
+        break;
+      }
+    }
     if (conflict) {
       throw new ApiError(
         409,
@@ -1017,10 +1074,30 @@ async function checkAndLinkIp(
     return;
   }
 
-  // A PC IP entered for the first time should become a real IP Management
+  const assetTables: Array<"pc_registrations" | "devices" | "servers"> = [
+    "pc_registrations",
+    "devices",
+    "servers",
+  ];
+  for (const assetTable of assetTables) {
+    const currentFilter = assetTable === table ? " AND id != ?" : "";
+    const [rows] = await conn.query<any[]>(
+      `SELECT id, hostname FROM ${assetTable}
+       WHERE ip_address IS NOT NULL AND TRIM(ip_address) = TRIM(?)${currentFilter}`,
+      assetTable === table ? [raw, currentId || ""] : [raw],
+    );
+    if (rows[0]) {
+      throw new ApiError(
+        409,
+        `IP Address ${raw} is already registered to "${rows[0].hostname || "another asset"}". Choose a different address.`,
+      );
+    }
+  }
+
+  // An asset IP entered for the first time should become a real IP Management
   // record as part of the same transaction, so both modules share one source
-  // of truth instead of leaving the PC with an unlinked text-only address.
-  if (table === "pc_registrations") {
+  // of truth instead of leaving the asset with an unlinked text-only address.
+  if (table === "pc_registrations" || table === "servers") {
     const [subnetRows] = await conn.query<any[]>("SELECT * FROM ip_subnets");
     const subnet = findMatchingSubnet(raw, subnetRows);
     const ipId = crypto.randomUUID();
@@ -1046,20 +1123,6 @@ async function checkAndLinkIp(
     return;
   }
 
-  const [freeTextRows] = await conn.query<any[]>(
-    `SELECT id, hostname FROM pc_registrations
-     WHERE ip_address IS NOT NULL AND TRIM(ip_address) = TRIM(?) AND NOT (id = ? AND ? = 'pc_registrations')
-     UNION ALL
-     SELECT id, hostname FROM devices
-     WHERE ip_address IS NOT NULL AND TRIM(ip_address) = TRIM(?) AND NOT (id = ? AND ? = 'devices')`,
-    [raw, currentId || "", table, raw, currentId || "", table],
-  );
-  if (freeTextRows[0]) {
-    throw new ApiError(
-      409,
-      `IP Address ${raw} is already registered to "${freeTextRows[0].hostname || "another asset"}". Choose a different address, or register it in IP Management first to link it properly.`,
-    );
-  }
   body.ip_id = null;
 }
 
@@ -1215,12 +1278,32 @@ export const pcRegistrationsConfig: CrudTableConfig = {
   withDepartment: true,
   autoAssetId: true,
   beforeInsert: async (body, { conn }) => {
+    if (body.memory_detail != null) {
+      const memory = String(body.memory_detail).trim();
+      if (memory && (!RAM_REGEX.test(memory) || Number(memory) <= 0))
+        throw new ApiError(
+          400,
+          "Memory capacity must be a positive number in GB",
+        );
+      body.memory_detail = memory || null;
+    }
     await checkPcDuplicate(body, conn, null);
+    await ensurePcLicenseRecord(body, conn);
     await validatePcLicense(body, conn, null);
     await checkAndLinkIp("pc_registrations", body, conn, null);
   },
   beforeUpdate: async (body, { conn }, id) => {
+    if (body.memory_detail != null) {
+      const memory = String(body.memory_detail).trim();
+      if (memory && (!RAM_REGEX.test(memory) || Number(memory) <= 0))
+        throw new ApiError(
+          400,
+          "Memory capacity must be a positive number in GB",
+        );
+      body.memory_detail = memory || null;
+    }
     await checkPcDuplicate(body, conn, id);
+    await ensurePcLicenseRecord(body, conn);
     await validatePcLicense(body, conn, id);
     await checkAndLinkIp("pc_registrations", body, conn, id);
   },
@@ -1276,6 +1359,8 @@ const SERVER_REQUIRED_FIELDS: [string, string][] = [
   ["host_location", "Host Location"],
 ];
 
+const RAM_REGEX = /^\d+(?:\.\d+)?$/;
+
 async function validateServer(
   body: Row,
   conn: PoolConnection,
@@ -1306,6 +1391,12 @@ async function validateServer(
         "SSH Port Number must be a number between 1 and 65535",
       );
   }
+  if ("ram" in body) {
+    const ram = String(body.ram).trim();
+    if (!RAM_REGEX.test(ram) || Number(ram) <= 0)
+      throw new ApiError(400, "Resource RAM must be a positive number in GB");
+    body.ram = ram;
+  }
   if ("os_release" in body) {
     const [rows] = await conn.query<any[]>(
       "SELECT 1 FROM os_releases WHERE code = ?",
@@ -1329,8 +1420,15 @@ export const serversConfig: CrudTableConfig = {
   updateRoles: WRITE_ROLES,
   deleteRoles: ASSET_DELETE_ROLES,
   autoAssetId: true,
-  beforeInsert: (body, { conn }) => validateServer(body, conn, true, null),
-  beforeUpdate: (body, { conn }, id) => validateServer(body, conn, false, id),
+  beforeInsert: async (body, { conn }) => {
+    await validateServer(body, conn, true, null);
+    await checkAndLinkIp("servers", body, conn, null);
+  },
+  beforeUpdate: async (body, { conn }, id) => {
+    await validateServer(body, conn, false, id);
+    await checkAndLinkIp("servers", body, conn, id);
+  },
+  decorate: attachIpRecord,
   notify: {
     type: "Server",
     label: (row) => row.hostname || row.asset_id || row.id,

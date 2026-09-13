@@ -451,6 +451,9 @@ export interface Server {
   os_release?: string | null;
   host_location?: string | null;
   notes?: string | null;
+  // Links this server to its authoritative record in IP Management.
+  ip_id?: string | null;
+  ip_record?: IPAddress | null;
   registered_by?: string | null;
   created_at: string;
   updated_at: string;

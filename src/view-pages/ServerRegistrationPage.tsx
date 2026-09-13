@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   supabase,
   Server,
@@ -11,7 +11,6 @@ import {
   OSRelease,
   HostLocation,
   Vendor,
-  IPAddress,
   DirectoryUser,
 } from "../lib/supabase";
 import { matchSubnet } from "../lib/subnet";
@@ -28,8 +27,12 @@ import {
   Button,
 } from "../components/FormControls";
 import { SearchableSelect } from "../components/SearchableSelect";
-import { SearchableCombobox } from "../components/SearchableCombobox";
-import { isValidIPv4, isValidPort, IPV4_PATTERN } from "../lib/validation";
+import {
+  isValidIPv4,
+  isValidPort,
+  isValidRam,
+  IPV4_PATTERN,
+} from "../lib/validation";
 import { ImageInput } from "../components/ImageInput";
 import { ZoomImage } from "../components/ZoomImage";
 import { fetchProfileDirectory } from "../lib/api";
@@ -74,7 +77,6 @@ export function ServerRegistrationPage({
   const [hostLocations, setHostLocations] = useState<HostLocation[]>([]);
   const [subnets, setSubnets] = useState<IPSubnet[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [ipAddresses, setIpAddresses] = useState<IPAddress[]>([]);
   const [employees, setEmployees] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -94,7 +96,6 @@ export function ServerRegistrationPage({
       osReleasesRes,
       hostLocationsRes,
       vendorsRes,
-      ipRes,
       employeesRes,
     ] = await Promise.all([
       supabase
@@ -108,13 +109,6 @@ export function ServerRegistrationPage({
       supabase.from("os_releases").select("*").order("label"),
       supabase.from("host_locations").select("*").order("label"),
       supabase.from("vendors").select("*").order("label"),
-      // IP Management records — the Server IP Address field checks
-      // here first: a match can be picked straight from the list,
-      // and an address not found there can still be entered manually.
-      supabase
-        .from("ip_addresses")
-        .select("*")
-        .order("ip_address", { ascending: true }),
       // Resolves registered_by to a name for "Registered By" in the
       // detail view — see GET /profiles/directory.
       fetchProfileDirectory(),
@@ -128,7 +122,6 @@ export function ServerRegistrationPage({
     if (hostLocationsRes.data)
       setHostLocations(hostLocationsRes.data as HostLocation[]);
     if (vendorsRes.data) setVendors(vendorsRes.data as Vendor[]);
-    if (ipRes.data) setIpAddresses(ipRes.data as IPAddress[]);
     if (employeesRes.data) setEmployees(employeesRes.data as DirectoryUser[]);
     setLoading(false);
   }, []);
@@ -186,23 +179,6 @@ export function ServerRegistrationPage({
 
   const detectedSubnet = matchSubnet(form.ip_address, subnets);
 
-  // IP Management lookup: as the user types/selects a Server IP
-  // Address, check whether it matches an address already registered
-  // in IP Management (offered below via a SearchableCombobox so it can be
-  // picked directly) and surface that record's hostname/status. An
-  // address with no match is left as-is — manual entry of a new,
-  // not-yet-registered address is still allowed.
-  const ipAddressOptions = useMemo(
-    () => [...new Set(ipAddresses.map((ip) => ip.ip_address))].sort(),
-    [ipAddresses],
-  );
-  const matchedIp = useMemo(
-    () =>
-      ipAddresses.find((ip) => ip.ip_address === form.ip_address.trim()) ??
-      null,
-    [ipAddresses, form.ip_address],
-  );
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.hostname) {
@@ -251,6 +227,10 @@ export function ServerRegistrationPage({
     }
     if (!form.ram.trim()) {
       toast("Resource RAM is required", "error");
+      return;
+    }
+    if (!isValidRam(form.ram)) {
+      toast("Resource RAM must be a positive number in GB", "error");
       return;
     }
     if (!form.cpu.trim()) {
@@ -417,7 +397,7 @@ export function ServerRegistrationPage({
       example: serverOwners[0]?.label,
     },
     { key: "vendor", label: "Vendor" },
-    { key: "ram", label: "RAM", required: true, example: "32GB" },
+    { key: "ram", label: "RAM (GB)", required: true, example: "32" },
     {
       key: "cpu",
       label: "CPU",
@@ -480,6 +460,8 @@ export function ServerRegistrationPage({
       else vendorLabel = v.label;
     }
     if (!raw.ram) errors.push("RAM is required");
+    else if (!isValidRam(raw.ram))
+      errors.push("RAM must be a positive number in GB");
     if (!raw.cpu) errors.push("CPU is required");
     if (!raw.storage) errors.push("Storage is required");
     let osReleaseCode: string | null = null;
@@ -916,25 +898,20 @@ export function ServerRegistrationPage({
               required
               hint={
                 form.ip_address
-                  ? matchedIp
-                    ? `Registered in IP Management — ${[matchedIp.hostname, matchedIp.status].filter(Boolean).join(" · ")}`
-                    : (detectedSubnet
-                        ? `Detected subnet: ${detectedSubnet.label}`
-                        : "No matching subnet — add one under Customization > IP Subnets") +
-                      ". Not found in IP Management — this will be entered as a new address."
-                  : ipAddressOptions.length > 0
-                    ? "Start typing to select a registered IP, or enter a new one"
-                    : "e.g., 10.6.13.45"
+                  ? detectedSubnet
+                    ? `Detected subnet: ${detectedSubnet.label}`
+                    : "No matching subnet — add one under Customization > IP Subnets"
+                  : "Enter an IPv4 address, e.g. 10.6.13.45"
               }
             >
-              <SearchableCombobox
-                options={ipAddressOptions.map((ip) => ({ value: ip }))}
+              <TextInput
                 value={form.ip_address}
-                onChange={(val) => setForm({ ...form, ip_address: val })}
+                onChange={(e) =>
+                  setForm({ ...form, ip_address: e.target.value })
+                }
                 placeholder="10.6.x.x"
                 pattern={IPV4_PATTERN}
                 title="Enter a valid IPv4 address, e.g. 10.6.13.45"
-                emptyMessage="No matching registered IP — this will be entered as a new address."
                 required
               />
             </Field>
@@ -1024,11 +1001,13 @@ export function ServerRegistrationPage({
                 }
               />
             </Field>
-            <Field label="Resource RAM" required>
-              <TextInput
+            <Field label="Resource RAM (GB)" required>
+              <NumberInput
                 value={form.ram}
                 onChange={(e) => setForm({ ...form, ram: e.target.value })}
-                placeholder="e.g., 32GB"
+                placeholder="e.g., 32"
+                min={0.01}
+                step="any"
                 required
               />
             </Field>

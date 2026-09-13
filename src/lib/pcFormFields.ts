@@ -34,7 +34,7 @@ export const PC_BASE_FIELD_META: Record<
   mac_address: { label: "MAC Address", placeholder: "00:1A:2B:3C:4D:5E" },
   license_id: { label: "Product Key / License" },
   cpu: { label: "CPU", placeholder: "e.g., Intel Core i5-1240P" },
-  memory_detail: { label: "Memory Detail", placeholder: "e.g., 16GB DDR4" },
+  memory_detail: { label: "Memory Capacity (GB)", placeholder: "e.g., 16" },
   generation_detail: {
     label: "Generation Detail",
     placeholder: "e.g., 12th Gen",

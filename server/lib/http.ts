@@ -47,4 +47,8 @@ export function withErrorHandling<Args extends any[]>(
 export const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate, private",
   Pragma: "no-cache",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
