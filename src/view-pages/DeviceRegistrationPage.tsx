@@ -10,7 +10,6 @@ import {
   Department,
   DirectoryUser,
   Floor,
-  IPAddress,
 } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/Toast";
@@ -25,7 +24,12 @@ import {
   Button,
 } from "../components/FormControls";
 import { SearchableSelect } from "../components/SearchableSelect";
-import { isValidIPv4, isValidMac, MAC_PATTERN } from "../lib/validation";
+import {
+  isValidIPv4,
+  isValidMac,
+  IPV4_PATTERN,
+  MAC_PATTERN,
+} from "../lib/validation";
 import { ImageInput } from "../components/ImageInput";
 import { ZoomImage } from "../components/ZoomImage";
 import { DynamicField } from "../components/DynamicField";
@@ -97,7 +101,6 @@ export function DeviceRegistrationPage({
   const [departments, setDepartments] = useState<Department[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [employees, setEmployees] = useState<DirectoryUser[]>([]);
-  const [ipAddresses, setIpAddresses] = useState<IPAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
@@ -116,7 +119,6 @@ export function DeviceRegistrationPage({
       deptsRes,
       floorsRes,
       employeesRes,
-      ipRes,
     ] = await Promise.all([
       supabase
         .from("devices")
@@ -134,13 +136,6 @@ export function DeviceRegistrationPage({
       // ("Registered By" in the detail view), not just writers using
       // the employee picker — see GET /profiles/directory.
       fetchProfileDirectory(),
-      // IP Management records — the Device IP Address field is a
-      // search/select drawn from here rather than free-typed, so it
-      // only ever offers addresses that are actually configured.
-      supabase
-        .from("ip_addresses")
-        .select("*")
-        .order("ip_address", { ascending: true }),
     ]);
     if (devicesRes.data) setRecords(devicesRes.data as Device[]);
     if (typesRes.data) setDeviceTypes(typesRes.data as DeviceType[]);
@@ -152,7 +147,6 @@ export function DeviceRegistrationPage({
     if (deptsRes.data) setDepartments(deptsRes.data as Department[]);
     if (floorsRes.data) setFloors(floorsRes.data as Floor[]);
     if (employeesRes.data) setEmployees(employeesRes.data as DirectoryUser[]);
-    if (ipRes.data) setIpAddresses(ipRes.data as IPAddress[]);
     setLoading(false);
   }, []);
 
@@ -262,41 +256,6 @@ export function DeviceRegistrationPage({
       ),
     [deviceModels, form.device_type],
   );
-
-  // Device IP Address options: drawn from IP Management (ip_addresses)
-  // rather than free-typed, so registration always ties back to an
-  // address actually configured there. Addresses already tied to a
-  // different device are hidden to steer away from an obvious
-  // conflict, but the record being edited keeps its own address
-  // selectable, and a legacy free-typed value not found in IP
-  // Management (from before this field existed) is kept as a one-off
-  // option so it isn't silently dropped from the field.
-  const deviceIpOptions = useMemo(() => {
-    const usedByOtherDevice = new Set(
-      records
-        .filter((r) => r.id !== editing?.id && r.ip_address)
-        .map((r) => r.ip_address as string),
-    );
-    const opts = ipAddresses
-      .filter(
-        (ip) =>
-          ip.ip_address === form.ip_address ||
-          !usedByOtherDevice.has(ip.ip_address),
-      )
-      .map((ip) => ({
-        value: ip.ip_address,
-        label: ip.ip_address,
-        sublabel: [ip.hostname, ip.status].filter(Boolean).join(" · "),
-      }));
-    if (form.ip_address && !opts.some((o) => o.value === form.ip_address)) {
-      opts.unshift({
-        value: form.ip_address,
-        label: form.ip_address,
-        sublabel: "Not in IP Management",
-      });
-    }
-    return opts;
-  }, [ipAddresses, records, editing, form.ip_address]);
 
   const openEdit = (rec: Device) => {
     setEditing(rec);
@@ -595,12 +554,9 @@ export function DeviceRegistrationPage({
     if (baseF.includes("ip_address")) {
       if (raw.ip_address) {
         const ipAddress = raw.ip_address.trim();
-        const ipRec = ipAddresses.find((ip) => ip.ip_address === ipAddress);
-        if (!ipRec)
-          errors.push(
-            `IP Address "${raw.ip_address}" isn't a registered IP — add it under IP Management first`,
-          );
-        else ipValue = ipRec.ip_address;
+        if (!isValidIPv4(ipAddress))
+          errors.push(`${label("ip_address")} must be a valid IPv4 address`);
+        else ipValue = ipAddress;
       } else if (reqBaseF.includes("ip_address"))
         errors.push(`${label("ip_address")} is required`);
     }
@@ -1296,42 +1252,19 @@ export function DeviceRegistrationPage({
                 required={requiredBaseFields.includes("ip_address")}
                 skip={!requiredBaseFields.includes("ip_address")}
                 onSkip={() => setSkipIP(!skipIP)}
-                hint={
-                  skipIP
-                    ? undefined
-                    : ipAddresses.length === 0
-                      ? "No IP addresses registered yet - add one under IP Management."
-                      : `${deviceIpOptions.length} address${deviceIpOptions.length === 1 ? "" : "es"} available to select`
-                }
+                hint={skipIP ? undefined : "Enter a valid IPv4 address, e.g. 10.6.13.45"}
               >
-                <SearchableSelect
-                  options={deviceIpOptions}
+                <TextInput
                   value={form.ip_address}
-                  onChange={(val) => setForm({ ...form, ip_address: val })}
-                  placeholder={
-                    skipIP ? "Skipped" : "Select a registered IP address..."
+                  onChange={(e) =>
+                    setForm({ ...form, ip_address: e.target.value })
                   }
-                  searchPlaceholder="Search by IP, hostname, or status..."
-                  emptyMessage={
-                    ipAddresses.length === 0
-                      ? "No IP addresses registered yet."
-                      : "No matching IP addresses."
-                  }
+                  placeholder={skipIP ? "Skipped" : fieldPlaceholder("ip_address")}
                   required={requiredBaseFields.includes("ip_address")}
+                  pattern={IPV4_PATTERN}
+                  title="Enter a valid IPv4 address, e.g. 10.6.13.45"
                   disabled={skipIP}
                 />
-                {onNavigate && hasRole("admin") && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate("ip")}
-                    className="mt-1 text-xs text-brand-600 hover:text-brand-500 font-medium underline underline-offset-2"
-                    title="Register IP addresses in IP Management"
-                  >
-                    {ipAddresses.length === 0
-                      ? "Add an IP address"
-                      : "Don't see the right IP? Manage IP addresses"}
-                  </button>
-                )}
               </Field>
             )}
             {baseFields.includes("serial_number") && (
