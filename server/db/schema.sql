@@ -439,12 +439,15 @@ CREATE TABLE IF NOT EXISTS servers (
   os_release VARCHAR(100) NULL,
   host_location VARCHAR(100) NULL,
   notes TEXT NULL,
+  ip_id CHAR(36) NULL,
   registered_by CHAR(36) NULL,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_servers_ip FOREIGN KEY (ip_id) REFERENCES ip_addresses(id) ON DELETE SET NULL,
   CONSTRAINT fk_servers_registered_by FOREIGN KEY (registered_by) REFERENCES profiles(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE INDEX idx_servers_created ON servers(created_at);
+CREATE INDEX idx_servers_ip_id ON servers(ip_id);
 
 -- ---------------------------------------------------------------------
 -- Reminders

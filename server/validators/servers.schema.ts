@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const RAM_REGEX = /^\d+(?:\.\d+)?$/;
+
 export const serverSchema = z.looseObject({
   server_type: z.string().trim().min(1).max(100).optional(),
   hostname: z.string().trim().min(1).max(255).optional(),
@@ -10,7 +12,13 @@ export const serverSchema = z.looseObject({
   network_subnet: z.string().max(100).nullable().optional(),
   image: z.string().nullable().optional(),
   vendor: z.string().max(255).nullable().optional(),
-  ram: z.string().max(100).optional(),
+  ram: z
+    .string()
+    .trim()
+    .max(100)
+    .regex(RAM_REGEX, "RAM must be a positive number in GB")
+    .refine((value) => Number(value) > 0, "RAM must be greater than zero")
+    .optional(),
   cpu: z.string().max(100).optional(),
   storage: z.string().max(100).optional(),
   os_release: z.string().max(100).optional(),

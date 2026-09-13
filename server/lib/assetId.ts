@@ -3,29 +3,6 @@ import type { PoolConnection, Pool } from "mysql2/promise";
 const ORG_PREFIX = "GBB";
 const SEQ_WIDTH = 3;
 
-const DEVICE_TYPE_CODES: Record<string, string> = {
-  network: "NET",
-  physical_server: "SRV",
-  storage_server: "STO",
-  wifi_access_point: "WAP",
-  core_switch: "CSW",
-  access_switch: "ASW",
-  ethiotelecom_epon: "EPO",
-  ethiotelecom_gpon: "GPO",
-  edge_router: "RTR",
-  distribution_switch: "DSW",
-  fire_extinguisher: "FEX",
-  ac: "ACU",
-  ups: "UPS",
-  monitoring_tv: "MTV",
-  rack: "RAK",
-  cctv_camera: "CAM",
-  digital_signage: "DSG",
-  printer_photocopy: "PRN",
-  check_scanner: "CSC",
-  normal_scanner: "SCN",
-};
-
 const LICENSE_TYPE_CODES: Record<string, string> = {
   operating_system: "OSL",
   email_365: "E365",
@@ -54,10 +31,9 @@ export function resolveTypeCode(
     case "servers":
       return "SRV";
     case "devices":
-      return (
-        DEVICE_TYPE_CODES[record.device_type] ||
-        codeFromText(record.device_type, "DEV")
-      );
+      // Device type is descriptive; it must never make a device share a
+      // sequence with servers or another asset category.
+      return "DEV";
     case "licenses":
       return (
         LICENSE_TYPE_CODES[record.license_type] ||

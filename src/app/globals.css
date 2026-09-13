@@ -225,6 +225,10 @@ body {
   z-index: 1;
   border-bottom: 2px solid var(--gbb-border);
 }
+.dark .gbb-table th {
+  background: #1F2937;
+  color: #D1D5DB;
+}
 .gbb-table td {
   padding: 11px 16px;
   border-bottom: 1px solid var(--gbb-border);
@@ -244,6 +248,12 @@ body {
 }
 .gbb-table tbody tr:hover td {
   color: var(--gbb-text);
+}
+.dark .gbb-table tbody tr:hover {
+  background-color: #1E3A5F;
+}
+.dark .gbb-table tbody tr:hover td {
+  color: #F9FAFB;
 }
 
 /* Input focus — GBB's own blue-black (#3835A3, the logo hue) focus ring

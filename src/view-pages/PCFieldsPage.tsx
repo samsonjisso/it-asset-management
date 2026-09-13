@@ -44,7 +44,10 @@ export function PCFieldsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("pc_form_fields").select("*");
+    const { data } = await supabase
+      .from("pc_form_fields")
+      .select("*")
+      .order("updated_at", { ascending: false });
     const row = (data as PcFormFields[] | null)?.[0] ?? null;
     setConfig(row);
     setBaseFields(parsePcBaseFields(row));

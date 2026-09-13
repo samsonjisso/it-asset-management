@@ -11,6 +11,15 @@ interface FileInputProps {
 }
 
 const MAX_BYTES = 4 * 1024 * 1024; // 4MB — comfortably under the JSON body limit
+const ACCEPTED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
 
 // A generic "File Upload" custom-field control: pick any file, it's
 // read as a base64 data URL client-side (same no-separate-endpoint
@@ -24,6 +33,10 @@ export function FileInput({ value, onChange, hint }: FileInputProps) {
   const handleFile = (file: File | undefined) => {
     setError("");
     if (!file) return;
+    if (!ACCEPTED_TYPES.has(file.type) && !/\.(pdf|docx?)$/i.test(file.name)) {
+      setError("Please choose an image, PDF, or Word document");
+      return;
+    }
     if (file.size > MAX_BYTES) {
       setError("File is too large (max 4MB)");
       return;
@@ -91,6 +104,7 @@ export function FileInput({ value, onChange, hint }: FileInputProps) {
       <input
         ref={inputRef}
         type="file"
+        accept="image/*,.pdf,.doc,.docx"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />

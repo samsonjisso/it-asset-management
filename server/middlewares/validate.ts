@@ -6,16 +6,50 @@ const XSS_PATTERNS = [
   /(?:javascript|vbscript|data\s*:\s*text\/html)\s*:/i,
   /\bon[a-z]+\s*=\s*(?:["']|[^\s>]+)/i,
 ];
+const DANGEROUS_URL_PATTERN = /^(?:javascript|vbscript|file|blob):/i;
+const SAFE_DATA_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const DATA_URL_PATTERN = /^data:([\w./+-]+);base64,([A-Za-z0-9+/]+=*)$/s;
+
+function isDangerousUrl(value: string): boolean {
+  const normalized = value.trim().replace(/[\u0000-\u0020]+/g, "");
+  if (DANGEROUS_URL_PATTERN.test(normalized)) return true;
+  if (!/^data\s*:/i.test(normalized)) return false;
+  const match = DATA_URL_PATTERN.exec(normalized);
+  const mime = match?.[1];
+  const encoded = match?.[2];
+  if (!mime || !encoded || !SAFE_DATA_MIMES.has(mime.toLowerCase()))
+    return true;
+  return (encoded.length * 3) / 4 > 5 * 1024 * 1024;
+}
 
 function assertSafeInput(value: unknown, path = "body"): void {
-  if (
-    typeof value === "string" &&
-    XSS_PATTERNS.some((pattern) => pattern.test(value))
-  ) {
-    throw new ApiError(
-      400,
-      `${path}: HTML or executable content is not allowed`,
-    );
+  if (typeof value === "string") {
+    if (
+      XSS_PATTERNS.some((pattern) => pattern.test(value)) ||
+      isDangerousUrl(value)
+    ) {
+      throw new ApiError(
+        400,
+        `${path}: HTML or executable content is not allowed`,
+      );
+    }
+    if (/^[\[{]/.test(value.trim())) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        // Plain text that starts with a bracket is handled by the schema.
+      }
+      if (parsed && typeof parsed === "object") assertSafeInput(parsed, path);
+    }
   }
   if (Array.isArray(value)) {
     value.forEach((item, index) => assertSafeInput(item, `${path}[${index}]`));

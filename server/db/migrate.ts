@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
 
 dotenv.config({ path: ".env.local" });
+dotenv.config({ path: "server/.env" });
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -112,6 +113,20 @@ async function main() {
     await connection.query(
       "ALTER TABLE ip_addresses ADD COLUMN extra_data JSON NULL",
     );
+  }
+
+  const [serverColumns] = await connection.query<any[]>(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'servers'`,
+    [dbName],
+  );
+  if (!new Set(serverColumns.map((row) => row.COLUMN_NAME)).has("ip_id")) {
+    await connection.query(
+      "ALTER TABLE servers ADD COLUMN ip_id CHAR(36) NULL AFTER notes",
+    );
+    await connection.query(
+      "ALTER TABLE servers ADD CONSTRAINT fk_servers_ip FOREIGN KEY (ip_id) REFERENCES ip_addresses(id) ON DELETE SET NULL",
+    );
+    await connection.query("CREATE INDEX idx_servers_ip_id ON servers(ip_id)");
   }
 
   console.log(`Schema applied to database "${dbName}".`);

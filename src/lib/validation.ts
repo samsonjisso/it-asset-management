@@ -28,6 +28,13 @@ export const PHONE_REGEX = /^\+?[0-9\s\-().]{7,20}$/;
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// RAM is stored in GB as a positive numeric value.
+export const RAM_REGEX = /^\d+(?:\.\d+)?$/;
+
+export function isValidRam(value: string): boolean {
+  return RAM_REGEX.test(value.trim()) && Number(value) > 0;
+}
+
 // Requires an http/https scheme so it can't be confused with a bare
 // hostname or file path — used for the "URL" custom field type.
 export const URL_REGEX = /^https?:\/\/[^\s]+\.[^\s]+$/i;

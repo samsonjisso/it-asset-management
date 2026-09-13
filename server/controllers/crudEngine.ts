@@ -302,6 +302,19 @@ export async function createRow(
 
     const id = crypto.randomUUID();
     const ts = nowSql();
+    let generatedAssetId: string | null = null;
+    if (config.autoAssetId && columns.includes("asset_id")) {
+      generatedAssetId = await generateAssetId(conn, config.table, workingBody);
+    }
+    if (
+      config.table === "pc_registrations" &&
+      generatedAssetId &&
+      columns.includes("asset_tag") &&
+      !String(workingBody.asset_tag ?? "").trim()
+    ) {
+      workingBody.asset_tag = generatedAssetId;
+    }
+
     const insertCols = columns.filter(
       (c) =>
         c !== "id" &&
@@ -310,12 +323,7 @@ export async function createRow(
         c !== "asset_id" &&
         c in workingBody,
     );
-
-    let generatedAssetId: string | null = null;
-    if (config.autoAssetId && columns.includes("asset_id")) {
-      generatedAssetId = await generateAssetId(conn, config.table, workingBody);
-      if (generatedAssetId) insertCols.push("asset_id");
-    }
+    if (generatedAssetId) insertCols.push("asset_id");
 
     const timestampCols = ["created_at", "updated_at"].filter((c) =>
       columns.includes(c),
