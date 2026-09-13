@@ -79,7 +79,7 @@ export function SearchableSelect({
       // Let the popover mount before focusing.
       setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     setHighlight(0);

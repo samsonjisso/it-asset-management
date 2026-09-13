@@ -55,6 +55,10 @@ async function main() {
     }
   }
 
+  await connection.query(
+    "ALTER TABLE audit_log MODIFY COLUMN action ENUM('create', 'update', 'delete', 'backup_restore') NOT NULL",
+  );
+
   // CREATE TABLE IF NOT EXISTS does not repair an older pc_form_fields
   // table. Ensure every field used by the PC customization page exists.
   const [pcColumns] = await connection.query<any[]>(

@@ -49,6 +49,12 @@ export const ALL_MODULES: ModuleDef[] = [
     group: "main",
     roles: ["admin", "audit"],
   },
+  {
+    id: "audit",
+    label: "Audit Log",
+    group: "main",
+    roles: ["admin", "audit"],
+  },
   // Admin Customization
   {
     id: "departments",

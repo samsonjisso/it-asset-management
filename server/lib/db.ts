@@ -11,7 +11,6 @@ dotenv.config({ path: "server/.env" });
 // so a module-level pool — not a per-request connection — is correct
 // here, same as the original app's single `db` export).
 declare global {
-  // eslint-disable-next-line no-var
   var __gbbPool: mysql.Pool | undefined;
 }
 
