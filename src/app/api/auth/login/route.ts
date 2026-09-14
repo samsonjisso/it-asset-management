@@ -19,10 +19,13 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const result = await login(body);
   const { token, ...publicResult } = result;
   const response = jsonOk(publicResult, { headers: NO_STORE_HEADERS });
+  const isHttps =
+    req.headers.get("x-forwarded-proto") === "https" ||
+    req.nextUrl.protocol === "https:";
   response.cookies.set(AUTH_COOKIE_NAME, result.token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: process.env.COOKIE_SECURE === "true" && isHttps,
     path: "/",
     maxAge: 8 * 60 * 60,
   });
